@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="tamilTeesApp" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGACY TRACES | Culture. Cinema. Streetwear.</title>
+    <meta name="description"
+        content="Premium Tamil inspired streetwear. T-shirts, hoodies, and oversized tees celebrating Tamil culture, history, and cinema.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+    <!-- AngularJS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+    <!-- GSAP Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.1/dist/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollSmoother.min.js"></script>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body class="" ng-controller="HomeController">
+
+    <!-- Smooth Scroll Wrapper -->
+    <div id="smooth-wrapper">
+        <div id="smooth-content">
+
+            <!-- Navbar -->
+            <nav class="navbar navbar-expand-lg navbar-light fixed-top py-3 shadow-sm">
+                <div class="container">
+                    <a class="navbar-brand font-anton fs-3 text-uppercase" href="index.html">LEGACY TRACES</a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto gap-3 align-items-center">
+                            <li class="nav-item"><a class="nav-link active" href="index.html">Home</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/shop.html">Shop</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/customize.html">Customize</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/about.html">Our Story</a></li>
+                            <li class="nav-item"><a class="nav-link" href="pages/contact.html">Contact</a></li>
+                            <li class="nav-item position-relative">
+                                <a href="#" class="nav-link" id="favorites-toggle">
+                                    FAVORITES
+                                    <span class="favorite-badge"
+                                        ng-show="favorites.length > 0">{{favorites.length}}</span>
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="ms-lg-4 mt-3 mt-lg-0">
+                            <a href="#" class="btn btn-outline-light btn-sm rounded-0">CART (0)</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Hero Section with Grid Background -->
+            <header class="hero-section">
+                <!-- Left Content - 70% -->
+                <div class="hero-content-left">
+                    <h1 class="hero-title font-anton text-uppercase">
+                        Wear Your <span class="text-danger">Pride</span>
+                    </h1>
+                    <p class="hero-subtitle">Tamil Culture meets Modern Streetwear</p>
+                    <div class="hero-buttons">
+                        <a href="pages/customize.html" class="btn btn-primary-brand">START DESIGNING</a>
+                        <a href="pages/shop.html" class="btn btn-accent">SHOP COLLECTION</a>
+                    </div>
+                </div>
+
+                <!-- Right T-shirt Animation - 30% -->
+                <div class="tshirt-animation-container">
+                    <svg id="animated-tshirt" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <!-- T-shirt Base -->
+                        <g id="tshirt-base">
+                            <path id="tshirt-body" d="M50,60 L50,150 Q50,160 60,160 L140,160 Q150,160 150,150 L150,60 Z"
+                                fill="#c62828" stroke="#6b0000" stroke-width="2" />
+                            <!-- Left Sleeve -->
+                            <path id="left-sleeve" d="M50,60 L30,70 L30,90 L50,85 Z" fill="#c62828" stroke="#6b0000"
+                                stroke-width="2" />
+                            <!-- Right Sleeve -->
+                            <path id="right-sleeve" d="M150,60 L170,70 L170,90 L150,85 Z" fill="#c62828"
+                                stroke="#6b0000" stroke-width="2" />
+                            <!-- Collar -->
+                            <ellipse id="collar" cx="100" cy="60" rx="15" ry="8" fill="#121212" stroke="#6b0000"
+                                stroke-width="1" />
+                        </g>
+
+                        <!-- Design Elements -->
+                        <g id="design-elements">
+                            <text x="100" y="100" font-family="Anton" font-size="18" fill="#fff"
+                                text-anchor="middle">LEGACY</text>
+                            <text x="100" y="120" font-family="Anton" font-size="18" fill="#fff"
+                                text-anchor="middle">TRACES</text>
+                            <circle cx="100" cy="135" r="3" fill="#fff" />
+                        </g>
+
+                        <!-- Fold Line -->
+                        <line id="fold-line" x1="100" y1="50" x2="100" y2="170" stroke="#6b0000" stroke-width="1"
+                            stroke-dasharray="5,5" opacity="0.3" />
+                    </svg>
+                </div>
+
+                <!-- Scroll Blur Overlay -->
+                <div class="scroll-blur-overlay"></div>
+            </header>
+
+            <!-- Favorites Panel -->
+            <div class="favorites-panel" id="favorites-panel">
+                <div class="favorites-header">
+                    <h4 class="font-anton text-uppercase mb-0">Your Favorites</h4>
+                    <button class="btn-close btn-close-white" id="favorites-close"></button>
+                </div>
+                <div class="favorites-list">
+                    <div class="favorite-item" ng-repeat="item in favorites">
+                        <img ng-src="{{getImageUrl(item['Primary Image'])}}" alt="{{item.Name}}">
+                        <div class="favorite-item-info">
+                            <h6 class="font-anton text-uppercase mb-1">{{item.Name}}</h6>
+                            <p class="small text-secondary mb-0">₹{{item.Price}}</p>
+                        </div>
+                        <button class="favorite-item-remove" ng-click="toggleFavorite(item)">
+                            &times;
+                        </button>
+                    </div>
+                    <div class="text-center py-5" ng-if="favorites.length === 0">
+                        <p class="text-secondary">No favorites yet.</p>
+                        <a href="pages/shop.html" class="btn btn-accent btn-sm rounded-0">GO SHOPPING</a>
+                    </div>
+                </div>
+                <div class="favorites-footer mt-auto pt-3 border-top border-secondary" ng-if="favorites.length > 0">
+                    <button class="btn btn-accent w-100 rounded-0 fw-bold" ng-click="checkoutFavorites()">CHECKOUT
+                        ALL</button>
+                </div>
+            </div>
+
+            <!-- Featured Collections -->
+            <section class="py-5 content-section">
+                <div class="container py-4">
+                    <div class="text-center mb-5">
+                        <h2 class="font-anton text-uppercase display-5">The Collections</h2>
+                        <p class="text-secondary">Explore our curated Tamil-inspired series.</p>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card border-0 overflow-hidden collection-card shadow-soft"
+                                style="height: 300px;">
+                                <img src="https://placehold.co/600x400/1a1a1a/FFF?text=ICONIC+CINEMA"
+                                    class="card-img h-100 object-fit-cover" alt="Cinema Collection">
+                                <div class="card-img-overlay d-flex flex-column justify-content-end p-4">
+                                    <!-- <h3 class="card-title font-anton text-white mb-1">ICONIC CINEMA</h3> -->
+                                    <p class="card-text text-white small mb-3">Legends. Dialogues. Cult Classics.</p>
+                                    <a href="pages/shop.html?collection=CAT001"
+                                        class="btn btn-light btn-sm rounded-0 px-3 fw-bold stretched-link w-fit-content">Explore
+                                        &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 overflow-hidden collection-card shadow-soft"
+                                style="height: 300px;">
+                                <img src="https://placehold.co/600x400/990000/FFF?text=TAMIL+ROOTS"
+                                    class="card-img h-100 object-fit-cover" alt="Roots Collection">
+                                <div class="card-img-overlay d-flex flex-column justify-content-end p-4">
+                                    <!-- <h3 class="card-title font-anton text-white mb-1">TAMIL ROOTS</h3> -->
+                                    <p class="card-text text-white small mb-3">History. Art. Tradition.</p>
+                                    <a href="pages/shop.html?collection=CAT004"
+                                        class="btn btn-light btn-sm rounded-0 px-3 fw-bold stretched-link w-fit-content">Explore
+                                        &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Best Sellers with Infinite Loop -->
+            <section class="py-5 content-section" style="background: var(--secondary-bg);">
+                <div class="container">
+                    <div class="d-flex justify-content-between align-items-end mb-4">
+                        <h2 class="font-anton text-uppercase mb-0 display-6">Trending Now</h2>
+                    </div>
+
+                    <!-- Swiper Carousel with Infinite Loop -->
+                    <div class="swiper mySwiper" ng-show="!loading" style="display: none;"
+                        ng-class="{'d-block': !loading}">
+                        <div class="swiper-wrapper">
+                            <!-- Dynamic Product Loop -->
+                            <div class="swiper-slide" ng-repeat="product in featuredProducts">
+                                <div class="product-card" ng-click="viewProduct(product)" style="cursor: pointer;">
+                                    <button class="favorite-btn" ng-class="{'active': isFavorite(product)}"
+                                        ng-click="toggleFavorite(product); $event.stopPropagation();">
+                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                                d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                    <div class="position-relative mb-3 overflow-hidden">
+                                        <span ng-if="$index === 0"
+                                            class="badge bg-danger position-absolute top-0 start-0 m-2 rounded-0 z-2 small">BESTSELLER</span>
+                                        <span ng-if="$index === 2"
+                                            class="badge bg-light text-dark position-absolute top-0 start-0 m-2 rounded-0 z-2 small">NEW</span>
+
+                                        <img ng-src="{{getImageUrl(product['Primary Image'])}}"
+                                            class="img-fluid w-100 transition-transform" alt="{{product.Name}}"
+                                            style="height: 300px; object-fit: cover;">
+                                    </div>
+                                    <h6 class="font-anton mb-1 text-uppercase text-truncate">{{product.Name}}</h6>
+                                    <p class="text-secondary x-small mb-2 text-truncate">{{product['Short
+                                        description']}}</p>
+                                    <p class="fw-bold mb-0 small">₹{{product.Price}}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Navigation -->
+                        <div class="swiper-button-next"></div>
+                        <div class="swiper-button-prev"></div>
+                    </div>
+
+                    <div class="text-center py-5" ng-if="loading">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="py-5 mt-0">
+                <div class="container">
+                    <div class="row g-4">
+                        <div class="col-lg-4">
+                            <h4 class="font-anton mb-3">LEGACY TRACES</h4>
+                            <p class="small text-secondary">Celebrating the spirit of Tamil culture through premium
+                                streetwear.
+                                Made for the bold. Made for you.</p>
+                        </div>
+                        <div class="col-6 col-lg-2">
+                            <h6 class="text-uppercase fw-bold mb-3">Shop</h6>
+                            <ul class="list-unstyled small d-grid gap-2">
+                                <li><a href="#" class="text-decoration-none">Men</a></li>
+                                <li><a href="#" class="text-decoration-none">Women</a></li>
+                                <li><a href="#" class="text-decoration-none">Kids</a></li>
+                                <li><a href="pages/shop.html?category=TY002" class="text-decoration-none">Oversized</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-6 col-lg-2">
+                            <h6 class="text-uppercase fw-bold mb-3">Help</h6>
+                            <ul class="list-unstyled small d-grid gap-2">
+                                <li><a href="#" class="text-decoration-none">Track Order</a></li>
+                                <li><a href="#" class="text-decoration-none">Returns & Exchanges</a></li>
+                                <li><a href="#" class="text-decoration-none">Shipping Info</a></li>
+                                <li><a href="pages/contact.html" class="text-decoration-none">Contact Us</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-lg-4">
+                            <h6 class="text-uppercase fw-bold mb-3">Stay in the Loop</h6>
+                            <form class="d-flex gap-2">
+                                <input type="email" class="form-control bg-dark border-secondary text-white rounded-0"
+                                    placeholder="Enter your email">
+                                <button class="btn btn-danger rounded-0">JOIN</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="row mt-5 pt-4 border-top border-secondary">
+                        <div class="col-md-6 text-center text-md-start">
+                            <p class="small mb-0 text-secondary">&copy; 2026 LEGACY TRACES. All rights reserved.</p>
+                        </div>
+                        <div class="col-md-6 text-center text-md-end">
+                            <p class="small mb-0 text-secondary">Designed with Tamil Pride 🐅</p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/homeController.js"></script>
+
+    <!-- Favorites UI Toggle Script -->
+    <script>
+        const favoritesToggle = document.getElementById('favorites-toggle');
+        const favoritesPanel = document.getElementById('favorites-panel');
+        const favoritesClose = document.getElementById('favorites-close');
+
+        favoritesToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            favoritesPanel.classList.add('active');
+        });
+
+        favoritesClose.addEventListener('click', () => {
+            favoritesPanel.classList.remove('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!favoritesPanel.contains(e.target) && e.target !== favoritesToggle) {
+                favoritesPanel.classList.remove('active');
+            }
+        });
+    </script>
+
+    <!-- GSAP Animations Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", (event) => {
+            if (typeof gsap === 'undefined') {
+                console.error('GSAP not loaded!');
+                return;
+            }
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            // Shaky T-shirt Animation (Realistic Shake)
+            const shakyTl = gsap.timeline({ repeat: -1 });
+
+            shakyTl.to("#tshirt-base", {
+                rotation: 2,
+                x: 3,
+                y: -2,
+                duration: 0.1,
+                ease: "none"
+            })
+                .to("#tshirt-base", {
+                    rotation: -2,
+                    x: -3,
+                    y: 2,
+                    duration: 0.1,
+                    ease: "none"
+                })
+                .to("#tshirt-base", {
+                    rotation: 1,
+                    x: -2,
+                    y: -1,
+                    duration: 0.1,
+                    ease: "none"
+                })
+                .to("#tshirt-base", {
+                    rotation: -1,
+                    x: 2,
+                    y: 1,
+                    duration: 0.1,
+                    ease: "none"
+                })
+                .to("#tshirt-base", {
+                    rotation: 0,
+                    x: 0,
+                    y: 0,
+                    duration: 0.2,
+                    ease: "elastic.out(1, 0.3)"
+                })
+                .to("#tshirt-base", {
+                    duration: 2
+                });
+
+            // Sleeve shake
+            gsap.to("#left-sleeve", {
+                rotation: -5,
+                transformOrigin: "right center",
+                duration: 0.5,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
+
+            gsap.to("#right-sleeve", {
+                rotation: 5,
+                transformOrigin: "left center",
+                duration: 0.5,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
+                delay: 0.25
+            });
+
+            // Hero content animations
+            gsap.from(".hero-title", {
+                y: 50,
+                opacity: 0,
+                duration: 1,
+                delay: 0.3,
+                ease: "power3.out"
+            });
+
+            gsap.from(".hero-subtitle", {
+                y: 30,
+                opacity: 0,
+                duration: 1,
+                delay: 0.6,
+                ease: "power3.out"
+            });
+
+            gsap.from(".hero-buttons", {
+                y: 20,
+                opacity: 0,
+                duration: 1,
+                delay: 0.9,
+                ease: "power3.out"
+            });
+
+            // Scroll Blur Overlay
+            ScrollTrigger.create({
+                trigger: ".hero-section",
+                start: "top top",
+                end: "bottom top",
+                onUpdate: (self) => {
+                    const overlay = document.querySelector('.scroll-blur-overlay');
+                    const progress = self.progress;
+                    overlay.style.opacity = progress;
+                    overlay.style.backdropFilter = `blur(${progress * 10}px)`;
+                }
+            });
+
+            // Content sections fade in
+            gsap.utils.toArray('.content-section').forEach(section => {
+                gsap.from(section, {
+                    scrollTrigger: {
+                        trigger: section,
+                        start: 'top 80%',
+                        toggleActions: 'play none none reverse'
+                    },
+                    y: 50,
+                    opacity: 0,
+                    duration: 1,
+                    ease: 'power3.out'
+                });
+            });
+        });
+    </script>
+
+    <!-- Initialize Swiper with Infinite Loop -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var swiper = new Swiper(".mySwiper", {
+                slidesPerView: 1.2,
+                spaceBetween: 15,
+                loop: true, // Infinite loop
+                speed: 600, // Smooth transition
+                autoplay: {
+                    delay: 3000,
+                    disableOnInteraction: false,
+                },
+                navigation: {
+                    nextEl: ".swiper-button-next",
+                    prevEl: ".swiper-button-prev",
+                },
+                breakpoints: {
+                    640: {
+                        slidesPerView: 2.2,
+                        spaceBetween: 20,
+                    },
+                    768: {
+                        slidesPerView: 3,
+                        spaceBetween: 25,
+                    },
+                    1024: {
+                        slidesPerView: 4,
+                        spaceBetween: 30,
+                    },
+                },
+            });
+        });
+    </script>
+</body>
+
+</html>
