@@ -30,7 +30,7 @@ const Home = () => {
             <Hero />
             <ProductCarousel title="Trending Now" products={products} />
             <ProductCarousel title="New Arrivals" products={products} />
-            <ProductCarousel title="Best Sellers" products={products} />
+            {/* <ProductCarousel title="Best Sellers" products={products} /> */}
         </main>
     );
 };

@@ -8,6 +8,7 @@ import ProductDetails from './pages/ProductDetails';
 import Customize from './pages/Customize';
 import Favorites from './pages/Favorites';
 import Cart from './pages/Cart';
+import About from './pages/About';
 import { CartProvider } from './context/CartContext';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/customize" element={<Customize />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/about" element={<About />} />
         </Routes>
         <Footer />
       </div>
