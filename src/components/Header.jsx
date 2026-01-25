@@ -43,6 +43,7 @@ const Header = () => {
                         <Link to="/shop" className="hover:text-primary transition-colors">Shop</Link>
                         <Link to="/customize" className="hover:text-primary transition-colors">Customize</Link>
                         <Link to="/about" className="hover:text-primary transition-colors">Our Story</Link>
+                        <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
                     </nav>
 
                     {/* Actions */}
@@ -88,6 +89,7 @@ const Header = () => {
                         <Link to="/shop" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Shop</Link>
                         <Link to="/customize" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Customize</Link>
                         <Link to="/about" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Our Story</Link>
+                        <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Contact</Link>
                     </nav>
                 </div>
             </header>

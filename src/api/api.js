@@ -5,7 +5,7 @@ const API_URL = 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
 export const getImageUrl = (imageId) => {
     if (!imageId) return 'https://placehold.co/400x500/000/FFF?text=No+Image';
     if (imageId.startsWith('http')) return imageId;
-    return `https://lh3.googleusercontent.com/d/${imageId}?authuser=1/view`
+    return `https://lh3.googleusercontent.com/d/${imageId}`;
 };
 
 // Cache to store the API response

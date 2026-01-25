@@ -1,25 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchProductById, getImageUrl } from '../api/api';
+import { fetchProductById, fetchProducts, getImageUrl } from '../api/api';
 import { ShoppingCart, Heart, Share2, Truck } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { useCart } from '../context/CartContext';
+import SizeChartDrawer from '../components/SizeChartDrawer';
+import ProductCard from '../components/ProductCard';
+import SEO from '../components/SEO';
 
 const ProductDetails = () => {
     const { id } = useParams();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selectedSize, setSelectedSize] = useState('');
-    const [mainImage, setMainImage] = useState('');
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
+    const [relatedProducts, setRelatedProducts] = useState([]);
     const { isFavorite, toggleFavorite } = useFavorites();
     const { addToCart } = useCart();
 
     useEffect(() => {
         setLoading(true);
-        fetchProductById(id).then((data) => {
+        // Extract ID if it's in the slug--ID format
+        const productId = id.includes('--') ? id.split('--').pop() : id;
+
+        fetchProductById(productId).then((data) => {
             setProduct(data);
             if (data) {
-                setMainImage(getImageUrl(data['Primary Image']));
+                setCurrentImageIndex(0);
+                // Fetch related products
+                fetchProducts().then((allProducts) => {
+                    const related = allProducts.filter(p =>
+                        p.ID !== data.ID && (p.Type === data.Type || p.Collection === data.Collection)
+                    ).slice(0, 4);
+                    setRelatedProducts(related);
+                });
             }
             setLoading(false);
         });
@@ -30,34 +45,41 @@ const ProductDetails = () => {
 
     const favorite = isFavorite(product.ID);
 
-    // Parse gallery images
-    const galleryImages = product['Gallery Images']
-        ? product['Gallery Images'].split(',').map(imgId => getImageUrl(imgId.trim()))
-        : [];
+    // Consolidate all images
+    const allImages = [
+        getImageUrl(product['Primary Image']),
+        ...(product['Gallery Images']
+            ? product['Gallery Images'].split(',').map(imgId => getImageUrl(imgId.trim()))
+            : [])
+    ].filter(Boolean);
 
     // Default sizes
     const sizes = ["S", "M", "L", "XL", "XXL"];
 
     return (
         <div className="container mx-auto px-4 py-8 mt-8">
+            <SEO
+                title={`${product.Name} | Tamil Culture T-Shirt – Legacy Traces`}
+                description={product['Short description'] || product.Description}
+            />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 {/* Images */}
                 <div className="space-y-4">
                     <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                        <img src={mainImage} alt={product.Name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img
+                            src={allImages[currentImageIndex]}
+                            alt={`${product.Name} – Tamil Culture T-Shirt`}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                        />
                     </div>
-                    <div className="flex gap-4 overflow-x-auto pb-2">
-                        <button
-                            onClick={() => setMainImage(getImageUrl(product['Primary Image']))}
-                            className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 ${mainImage === getImageUrl(product['Primary Image']) ? 'border-primary' : 'border-transparent'}`}
-                        >
-                            <img src={getImageUrl(product['Primary Image'])} alt="Main" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </button>
-                        {galleryImages.map((img, index) => (
+                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                        {allImages.map((img, index) => (
                             <button
                                 key={index}
-                                onClick={() => setMainImage(img)}
-                                className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 ${mainImage === img ? 'border-primary' : 'border-transparent'}`}
+                                type="button"
+                                onClick={() => setCurrentImageIndex(index)}
+                                className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all ${currentImageIndex === index ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
                             >
                                 <img src={img} alt={`Gallery ${index}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </button>
@@ -81,7 +103,15 @@ const ProductDetails = () => {
                     <div className="mb-8">
                         <div className="flex justify-between items-center mb-3">
                             <span className="font-bold">Select Size</span>
-                            <button className="text-sm text-primary underline">Size Chart</button>
+                            {(product.Type === 'T-Shirt' || product.Name.toLowerCase().includes('shirt')) && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSizeChartOpen(true)}
+                                    className="text-sm text-primary underline cursor-pointer hover:opacity-80 transition-opacity"
+                                >
+                                    Size Chart
+                                </button>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-3">
                             {sizes.map((size) => (
@@ -146,6 +176,27 @@ const ProductDetails = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Size Chart Drawer */}
+            <SizeChartDrawer
+                isOpen={isSizeChartOpen}
+                onClose={() => setIsSizeChartOpen(false)}
+                productType={['TY001', 'TY002', 'TY003'].includes(product.Type) ? 'T-Shirt' : product.Type}
+            />
+
+            {/* Others Also Bought Section */}
+            {relatedProducts.length > 0 && (
+                <div className="mt-16 border-t pt-12">
+                    <h2 className="text-3xl font-heading font-bold mb-8">Others Also Bought</h2>
+                    <div className="flex overflow-x-auto pb-4 gap-6 scrollbar-hide md:grid md:grid-cols-4 md:overflow-visible">
+                        {relatedProducts.map((p) => (
+                            <div key={p.ID} className="flex-shrink-0 w-[280px] md:w-full">
+                                <ProductCard product={p} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

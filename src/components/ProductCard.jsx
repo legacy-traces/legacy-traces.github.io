@@ -3,6 +3,7 @@ import { ShoppingCart, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useFavorites } from '../context/FavoritesContext';
 import { getImageUrl } from '../api/api';
+import { slugify } from '../utils/seoUtils';
 
 const ProductCard = ({ product }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
@@ -20,10 +21,10 @@ const ProductCard = ({ product }) => {
                 <Heart size={18} fill={favorite ? "currentColor" : "none"} />
             </button>
 
-            <Link to={`/product/${product.ID}`} className="block relative pt-[125%] overflow-hidden">
+            <Link to={`/product/${slugify(product.Name)}--${product.ID}`} className="block relative pt-[125%] overflow-hidden">
                 <img
-                    src={`https://lh3.googleusercontent.com/d/${product['Primary Image']}?authuser=1/view`}
-                    alt={product.Name}
+                    src={getImageUrl(product['Primary Image'])}
+                    alt={`${product.Name} – Tamil Culture T-Shirt`}
                     className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     loading="lazy"
                     referrerPolicy="no-referrer"
@@ -32,7 +33,7 @@ const ProductCard = ({ product }) => {
 
             <div className="p-4 flex flex-col flex-grow">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{product.Type}</div>
-                <Link to={`/product/${product.ID}`} className="block">
+                <Link to={`/product/${slugify(product.Name)}--${product.ID}`} className="block">
                     <h3 className="font-heading font-bold text-lg mb-2 truncate group-hover:text-primary transition-colors">{product.Name}</h3>
                 </Link>
 

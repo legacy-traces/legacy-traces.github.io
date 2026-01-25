@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { getImageUrl } from '../api/api';
 
 const About = () => {
     return (
@@ -40,7 +41,7 @@ const About = () => {
                             <div className="relative group">
                                 <div className="absolute -inset-4 bg-primary/20 rounded-2xl blur-2xl group-hover:bg-primary/30 transition-all duration-500"></div>
                                 <img
-                                    src="https://images.unsplash.com/photo-1529139513065-07b3b126b9ea?q=80&w=1000&auto=format&fit=crop"
+                                    src={getImageUrl('1-Cmx-r6YsTwMuaFn4fzL4m6i9UySrlNr')}
                                     alt="Tamil Culture Streetwear"
                                     className="relative rounded-2xl shadow-2xl w-full object-cover aspect-square"
                                 />

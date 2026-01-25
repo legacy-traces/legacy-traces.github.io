@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchAllData } from '../api/api';
 import ProductCard from '../components/ProductCard';
 import { Filter, X } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const Shop = () => {
     const [products, setProducts] = useState([]);
@@ -47,6 +48,10 @@ const Shop = () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            <SEO
+                title="Shop Tamil Culture Streetwear | Legacy Traces"
+                description="Browse our exclusive collection of Tamil culture inspired streetwear. Find the perfect t-shirt, hoodie, or customized apparel."
+            />
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Mobile Filter Toggle */}
                 <button
