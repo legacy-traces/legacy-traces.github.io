@@ -8,6 +8,7 @@ import SizeChartDrawer from '../components/SizeChartDrawer';
 import ProductCard from '../components/ProductCard';
 import SEO from '../components/SEO';
 import SharePopup from '../components/SharePopup';
+import FeedbackSection from '../components/FeedbackSection';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductDetails = () => {
@@ -281,6 +282,9 @@ const ProductDetails = () => {
                 onClose={() => setIsSizeChartOpen(false)}
                 productType={['TY001', 'TY002', 'TY003'].includes(product.Type) ? 'T-Shirt' : product.Type}
             />
+
+            {/* Feedback & Ratings */}
+            <FeedbackSection productId={product.ID} />
 
             {/* Others Also Bought Section */}
             {relatedProducts.length > 0 && (

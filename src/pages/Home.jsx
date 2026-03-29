@@ -25,8 +25,12 @@ const Home = () => {
         );
     }
 
-    // For now, using the same product list for all sections as requested
-    // In future, this can be filtered by 'New', 'Trending', etc.
+    // Sort products by 'Order' ascending for Trending
+    const trendingProducts = [...products].sort((a, b) => {
+        const orderA = a.Order !== null && a.Order !== undefined ? a.Order : Infinity;
+        const orderB = b.Order !== null && b.Order !== undefined ? b.Order : Infinity;
+        return orderA - orderB;
+    });
 
     return (
         <main>
@@ -36,7 +40,7 @@ const Home = () => {
             />
             <h1 className="sr-only">Legacy Traces – Premium Tamil Culture Streetwear</h1>
             <Hero />
-            <ProductCarousel title="Trending Now" products={products} />
+            <ProductCarousel title="Trending Now" products={trendingProducts} />
             <ProductCarousel title="New Arrivals" products={products} />
             <Testimonials />
             <WhyChooseUs />

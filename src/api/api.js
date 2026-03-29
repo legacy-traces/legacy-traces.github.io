@@ -70,3 +70,83 @@ export const fetchProductById = async (id) => {
     const products = await fetchProducts();
     return products.find(p => p.ID === id);
 };
+
+// --- Feedback & Ratings API ---
+
+export const fetchAllFeedback = async () => {
+    try {
+        const response = await fetch(`${API_URL}?type=feedback`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.feedback || [];
+    } catch (error) {
+        console.error('Error fetching all feedback:', error);
+        return [];
+    }
+};
+
+export const fetchProductFeedback = async (productId) => {
+    try {
+        const response = await fetch(`${API_URL}?type=feedback&productId=${productId}`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.feedback || [];
+    } catch (error) {
+        console.error('Error fetching product feedback:', error);
+        return [];
+    }
+};
+
+export const postComment = async (commentData) => {
+    try {
+        const url = `${API_URL}?type=feedback${commentData.commentParentId ? '&action=reply' : ''}`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commentData)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        throw error;
+    }
+};
+
+export const interactComment = async (commentId, action) => {
+    try {
+        const response = await fetch(`${API_URL}?type=feedback&action=${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ commentId })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error(`Error ${action} comment:`, error);
+        throw error;
+    }
+};
+
+export const fetchProductRating = async (productId) => {
+    try {
+        const response = await fetch(`${API_URL}?type=rating&productId=${productId}`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching product rating:', error);
+        return null;
+    }
+};
+
+export const postRating = async (ratingData) => {
+    try {
+        const response = await fetch(`${API_URL}?type=rating`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ratingData)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error posting rating:', error);
+        throw error;
+    }
+};

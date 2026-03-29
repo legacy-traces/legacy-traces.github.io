@@ -38,7 +38,6 @@ const ProductCard = ({ product }) => {
             </Link>
 
             <div className="p-4 flex flex-col flex-grow">
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{product.Type}</div>
                 <Link to={`/product/${slugify(product.Name)}--${product.ID}`} className="block">
                     <h3 className="font-heading font-bold text-lg mb-2 truncate group-hover:text-primary transition-colors">{product.Name}</h3>
                 </Link>

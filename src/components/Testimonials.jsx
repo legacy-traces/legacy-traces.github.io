@@ -1,13 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { Star } from 'lucide-react';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import testimonials from '../data/testimonials.json';
+import staticTestimonials from '../data/testimonials.json';
+import { fetchAllFeedback } from '../api/api';
 
 const Testimonials = () => {
+    const [testimonials, setTestimonials] = useState(staticTestimonials);
+
+    useEffect(() => {
+        fetchAllFeedback().then(data => {
+            if (data && data.length > 0) {
+                const dynamicTestimonials = data
+                    .filter(f => !f.CommentParentID && f.Comments)
+                    .map(f => ({
+                        id: f.CommentID,
+                        text: f.Comments,
+                        name: f.UserId || 'Anonymous',
+                        rating: 5,
+                        location: 'Verified Buyer',
+                        image: null
+                    }));
+                // Only replace if we got valid testimonial rows
+                if (dynamicTestimonials.length > 0) {
+                    setTestimonials(dynamicTestimonials);
+                }
+            }
+        });
+    }, []);
+
     return (
         <section className="container mx-auto px-4 mt-20 mb-20">
             <div className="text-center mb-12">
