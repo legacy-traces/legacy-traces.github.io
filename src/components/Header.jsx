@@ -3,12 +3,14 @@ import { Menu, ShoppingBag, Sun, Moon, X, Heart } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
 import { Link } from 'react-router-dom';
 
 const Header = () => {
     const { theme, toggleTheme } = useTheme();
     const { favorites } = useFavorites();
     const { getCartCount } = useCart();
+    const { user } = useUser();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
@@ -52,6 +54,16 @@ const Header = () => {
                                 </span>
                             )}
                         </Link>
+                        
+                        {user ? (
+                            <Link to="/profile" className="w-8 h-8 rounded-full bg-primary text-black font-bold flex items-center justify-center text-sm shadow-sm hover:scale-105 transition-transform">
+                                {user?.name?.charAt(0).toUpperCase()}
+                            </Link>
+                        ) : (
+                            <Link to="/profile" className="hidden md:flex items-center justify-center px-4 py-1.5 text-sm font-bold bg-primary text-black rounded-full hover:bg-green-400 transition-colors">
+                                Login
+                            </Link>
+                        )}
 
                         <button className="md:hidden p-2" onClick={() => setIsMenuOpen(true)}>
                             <Menu size={24} />
@@ -73,6 +85,9 @@ const Header = () => {
                         <Link to="/customize" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Customize</Link>
                         <Link to="/about" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Our Story</Link>
                         <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="block p-4 text-black dark:text-white hover:text-primary transition-colors border-b border-gray-200 dark:border-gray-800 last:border-none">Contact</Link>
+                        {!user && (
+                            <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block p-4 text-primary font-bold transition-colors">Login / Register</Link>
+                        )}
                     </nav>
                 </div>
             </header>

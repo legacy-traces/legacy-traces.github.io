@@ -22,6 +22,7 @@ const ProductDetails = () => {
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [pincode, setPincode] = useState('');
     const [pincodeStatus, setPincodeStatus] = useState(null); // 'success', 'error', 'failure'
+    const [showCartToast, setShowCartToast] = useState(false);
     const { isFavorite, toggleFavorite } = useFavorites();
     const { addToCart } = useCart();
 
@@ -182,7 +183,11 @@ const ProductDetails = () => {
                             <button
                                 disabled={!selectedSize}
                                 onClick={() => {
-                                    addToCart(product, selectedSize);
+                                    if (selectedSize) {
+                                        addToCart(product, selectedSize);
+                                        setShowCartToast(true);
+                                        setTimeout(() => setShowCartToast(false), 3000);
+                                    }
                                 }}
                                 className={`flex-1 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all ${selectedSize
                                     ? 'bg-primary text-black hover:bg-green-400'
@@ -299,6 +304,24 @@ const ProductDetails = () => {
                     </div>
                 </div>
             )}
+
+            {/* Add to Cart Toast Container */}
+            <div className="fixed top-24 left-0 right-0 md:left-auto md:right-8 z-50 flex justify-center md:justify-end pointer-events-none px-4">
+                <AnimatePresence>
+                    {showCartToast && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="bg-white dark:bg-gray-800 text-black dark:text-white px-6 py-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 pointer-events-auto flex items-center gap-3"
+                        >
+                            <span className="text-xl">✅</span>
+                            <span className="font-medium text-sm md:text-base">Product added to cart successfully</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 };

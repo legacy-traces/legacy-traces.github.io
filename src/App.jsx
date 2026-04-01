@@ -11,13 +11,18 @@ import Cart from './pages/Cart';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import ShippingPolicy from './pages/ShippingPolicy';
+import Checkout from './pages/Checkout';
 import { CartProvider } from './context/CartContext';
+import { UserProvider } from './context/UserContext';
 import ScrollToTop from './components/ScrollToTop';
+import Profile from './pages/Profile';
+import Orders from './pages/Orders';
 
 function App() {
   return (
-    <CartProvider>
-      <ScrollToTop />
+    <UserProvider>
+      <CartProvider>
+        <ScrollToTop />
       <div className="app min-h-screen flex flex-col bg-white dark:bg-[#121212] text-black dark:text-white transition-colors duration-300">
         <Header />
         <Routes>
@@ -27,13 +32,17 @@ function App() {
           <Route path="/customize" element={<Customize />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/orders" element={<Orders />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/shipping-policy" element={<ShippingPolicy />} />
         </Routes>
         <Footer />
       </div>
-    </CartProvider>
+      </CartProvider>
+    </UserProvider>
   );
 }
 

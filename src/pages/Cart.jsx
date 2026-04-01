@@ -7,18 +7,6 @@ import { Link } from 'react-router-dom';
 const Cart = () => {
     const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
 
-    const handleCheckout = () => {
-        if (cartItems.length === 0) return;
-
-        let message = "Order Details:\n";
-        cartItems.forEach((item, index) => {
-            message += `${index + 1}. ${item.Name} - Size: ${item.size} - Qty: ${item.quantity}\n`;
-        });
-
-        const encodedMessage = encodeURIComponent(message);
-        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
-    };
-
     if (cartItems.length === 0) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -107,12 +95,12 @@ const Cart = () => {
                         <span className="text-primary">₹{getCartTotal()}</span>
                     </div>
                     <p className="text-xs text-gray-500 mb-6">Shipping and taxes calculated at checkout.</p>
-                    <button
-                        onClick={handleCheckout}
-                        className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-green-400 transition-colors flex items-center justify-center gap-2"
+                    <Link
+                        to="/checkout"
+                        className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-green-400 transition-colors flex items-center justify-center gap-2 text-center"
                     >
-                        PAY VIA WHATSAPP
-                    </button>
+                        PROCEED TO CHECKOUT
+                    </Link>
                 </div>
             </div>
         </div>
