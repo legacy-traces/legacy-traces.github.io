@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProductFeedback, fetchProductRating, postComment, postRating, interactComment } from '../api/api';
+import { useUser } from '../context/UserContext';
 import { Star, ThumbsUp, ThumbsDown, Reply, MessageSquare, Send } from 'lucide-react';
 
 const FeedbackSection = ({ productId }) => {
@@ -12,8 +13,19 @@ const FeedbackSection = ({ productId }) => {
     const [newComment, setNewComment] = useState('');
     const [replyTo, setReplyTo] = useState(null); // commentId
     const [replyText, setReplyText] = useState('');
-    const [userName, setUserName] = useState('');
-    const [phoneNo, setPhoneNo] = useState('');
+    const [isPosting, setIsPosting] = useState(false);
+    const { user } = useUser();
+    
+    // Auto-populate from context if available
+    const [userName, setUserName] = useState(user?.name || '');
+    const [phoneNo, setPhoneNo] = useState(user?.phone || '');
+
+    useEffect(() => {
+        if (user) {
+            setUserName(prev => prev || user.name || '');
+            setPhoneNo(prev => prev || user.phone || '');
+        }
+    }, [user]);
 
     useEffect(() => {
         loadFeedbackAndRating();
@@ -53,7 +65,8 @@ const FeedbackSection = ({ productId }) => {
     };
 
     const handlePostComment = async () => {
-        if (!newComment.trim() || !userName.trim()) return;
+        if (!newComment.trim() || !userName.trim() || isPosting) return;
+        setIsPosting(true);
         try {
             await postComment({
                 commentParentId: "",
@@ -65,14 +78,17 @@ const FeedbackSection = ({ productId }) => {
                 dislike: 0
             });
             setNewComment('');
-            loadFeedbackAndRating();
+            await loadFeedbackAndRating();
         } catch (e) {
             console.error('Failed to post comment', e);
+        } finally {
+            setIsPosting(false);
         }
     };
 
     const handlePostReply = async (parentId) => {
-        if (!replyText.trim() || !userName.trim()) return;
+        if (!replyText.trim() || !userName.trim() || isPosting) return;
+        setIsPosting(true);
         try {
             await postComment({
                 commentParentId: parentId,
@@ -85,9 +101,11 @@ const FeedbackSection = ({ productId }) => {
             });
             setReplyText('');
             setReplyTo(null);
-            loadFeedbackAndRating();
+            await loadFeedbackAndRating();
         } catch (e) {
             console.error('Failed to post reply', e);
+        } finally {
+            setIsPosting(false);
         }
     };
 
@@ -167,10 +185,11 @@ const FeedbackSection = ({ productId }) => {
                 <div className="flex justify-end">
                     <button 
                         onClick={handlePostComment}
-                        disabled={!newComment.trim() || !userName.trim()}
+                        disabled={!newComment.trim() || !userName.trim() || isPosting}
                         className="bg-black dark:bg-white text-white dark:text-black font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
-                        <Send size={18} /> Post Review
+                        {isPosting ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : <Send size={18} />}
+                        {isPosting ? 'Posting...' : 'Post Review'}
                     </button>
                 </div>
             </div>
@@ -218,10 +237,10 @@ const FeedbackSection = ({ productId }) => {
                                     />
                                     <button 
                                         onClick={() => handlePostReply(comment.CommentID)}
-                                        disabled={!replyText.trim()}
-                                        className="bg-primary text-black font-bold px-4 py-2 rounded-xl text-sm disabled:opacity-50"
+                                        disabled={!replyText.trim() || isPosting}
+                                        className="bg-primary text-black font-bold px-4 py-2 rounded-xl text-sm disabled:opacity-50 flex items-center gap-2"
                                     >
-                                        Reply
+                                        {isPosting ? 'Posting...' : 'Reply'}
                                     </button>
                                 </div>
                             )}

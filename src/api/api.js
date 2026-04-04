@@ -130,6 +130,18 @@ export const postRating = async (ratingData) => {
     }
 };
 
+export const fetchUserDetails = async (email) => {
+    try {
+        const response = await fetch(`${API_URL}?type=userDetails&email=${encodeURIComponent(email)}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.success ? data.customer : null;
+    } catch (error) {
+        console.error('Error fetching user details:', error);
+        return null;
+    }
+};
+
 export async function saveCustomer(data) {
   try {
     console.log("Sending customer data:", data);

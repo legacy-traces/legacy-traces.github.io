@@ -3,15 +3,31 @@ import { fetchAllData } from '../api/api';
 import ProductCard from '../components/ProductCard';
 import { Filter, X } from 'lucide-react';
 import SEO from '../components/SEO';
+import { useSearchParams } from 'react-router-dom';
+
+
+
+//   const [searchParams] = useSearchParams();
+
+// console.log(searchParams)
+// const id = params.get('collection'); // "123"
+// console.log(id)
+// const collection = id || 'All';
+// console.log(collection)
+
+var collection = 'All'
 
 const Shop = () => {
+
+    const [searchParams] = useSearchParams();
+    let collection = searchParams.get('collection') || "All"
+
+
     const [products, setProducts] = useState([]);
     const [collections, setCollections] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Filters
-    const [selectedCollection, setSelectedCollection] = useState('All');
+    const [selectedCollection, setSelectedCollection] = useState(collection);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [sortOrder, setSortOrder] = useState('default'); // default, lowToHigh, highToLow
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -24,6 +40,7 @@ const Shop = () => {
             setLoading(false);
         });
     }, []);
+
 
     // Filter and Sort Logic
     const filteredProducts = products
@@ -143,11 +160,11 @@ const Shop = () => {
                         <select
                             value={sortOrder}
                             onChange={(e) => setSortOrder(e.target.value)}
-                            className="bg-transparent border border-gray-300 dark:border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                            className="bg-white dark:bg-[#121212] text-black dark:text-white border border-gray-300 dark:border-gray-700 rounded px-3 py-2 focus:outline-none focus:border-primary"
                         >
-                            <option value="default">Sort by: Featured</option>
-                            <option value="lowToHigh">Price: Low to High</option>
-                            <option value="highToLow">Price: High to Low</option>
+                            <option value="default" className="text-black dark:text-white bg-white dark:bg-[#121212]">Sort by: Featured</option>
+                            <option value="lowToHigh" className="text-black dark:text-white bg-white dark:bg-[#121212]">Price: Low to High</option>
+                            <option value="highToLow" className="text-black dark:text-white bg-white dark:bg-[#121212]">Price: High to Low</option>
                         </select>
                     </div>
 

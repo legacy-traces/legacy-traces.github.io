@@ -68,7 +68,7 @@ const Testimonials = () => {
                                 ))}
                             </div>
                             
-                            <p className="text-gray-700 italic mb-6 line-clamp-2">"{testimonial.text}"</p>
+                            <p className="text-gray-700 italic mb-6 line-clamp-2 min-h-[3rem]" title={testimonial.text}>"{testimonial.text}"</p>
                             
                             <div className="mt-auto flex flex-col items-center">
                                 {testimonial.image && (

@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { CheckCircle2 } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
-import { saveCustomer, saveOrder } from '../api/api';
+import { saveCustomer, saveOrder, fetchUserDetails } from '../api/api';
 import { useUser } from '../context/UserContext';
 
 const Checkout = () => {
@@ -65,7 +65,7 @@ const Checkout = () => {
 
     useEffect(() => {
         // Auto-fill from global user context if authenticated
-        if (user) {
+        if (user && user.email) {
             setFormData(prev => ({
                 ...prev,
                 fullName: user.name || '',
@@ -74,6 +74,18 @@ const Checkout = () => {
                 address: user.address || ''
             }));
             setStep(2); // Skip login if already authenticated globally
+
+            // Dynamically fetch latest details from DB
+            fetchUserDetails(user.email).then(customer => {
+                if (customer) {
+                    setFormData(prev => ({
+                        ...prev,
+                        fullName: customer.name || prev.fullName,
+                        mobileNumber: customer.phoneNumber ? String(customer.phoneNumber) : prev.mobileNumber,
+                        address: customer.address || prev.address
+                    }));
+                }
+            }).catch(err => console.error("Failed to autopopulate:", err));
         }
     }, [user]);
 
@@ -332,8 +344,8 @@ const Checkout = () => {
                                         type="text"
                                         name="fullName"
                                         value={formData.fullName}
-                                        readOnly
-                                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-3 px-4 focus:outline-none text-gray-500 cursor-not-allowed"
+                                        onChange={handleInputChange}
+                                        className={`w-full bg-gray-50 dark:bg-gray-900 border ${errors.fullName ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
                                     />
                                     {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
                                 </div>

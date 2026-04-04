@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
-import { saveCustomer } from '../api/api';
+import { saveCustomer, fetchUserDetails } from '../api/api';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import { motion } from 'framer-motion';
@@ -14,6 +14,7 @@ const Profile = () => {
     const navigate = useNavigate();
     
     const [formData, setFormData] = useState({
+        name: '',
         phone: '',
         address: ''
     });
@@ -27,28 +28,31 @@ const Profile = () => {
         if (user) {
             // Set initial from local
             setFormData({
+                name: user.name || '',
                 phone: user.phone || '',
                 address: user.address || ''
             });
 
-            // Optional explicit fetch from backend if endpoint supports it
+            // Fetch from backend
             const fetchLatest = async () => {
                 try {
                     setIsLoading(true);
-                    // Standard GET convention for fetching
-                    const res = await fetch(`${API_URL}?type=customer&email=${encodeURIComponent(user.email)}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data && data.phone !== undefined) {
-                            setFormData({
-                                phone: data.phone || '',
-                                address: data.address || ''
-                            });
-                            setUser(prev => ({ ...prev, phone: data.phone || '', address: data.address || '' }));
-                        }
+                    const customer = await fetchUserDetails(user.email);
+                    if (customer) {
+                        setFormData({
+                            name: customer.name || user.name || '',
+                            phone: customer.phoneNumber ? String(customer.phoneNumber) : '',
+                            address: customer.address || ''
+                        });
+                        setUser(prev => ({ 
+                            ...prev, 
+                            name: customer.name || prev.name || '', 
+                            phone: customer.phoneNumber ? String(customer.phoneNumber) : '', 
+                            address: customer.address || '' 
+                        }));
                     }
                 } catch (e) {
-                    console.log("Silent fetch fail, relying on cache.", e);
+                    console.error("Silent fetch fail, relying on cache.", e);
                 } finally {
                     setIsLoading(false);
                 }
@@ -95,12 +99,17 @@ const Profile = () => {
             return;
         }
 
+        if (!formData.name.trim()) {
+            setError('Name cannot be empty.');
+            return;
+        }
+
         setIsSaving(true);
 
         try {
             const payload = {
                 email: user.email,
-                name: user.name,
+                name: formData.name.trim(),
                 phone: cleanPhone,
                 address: formData.address.trim()
             };
@@ -211,9 +220,10 @@ const Profile = () => {
                                 </label>
                                 <input 
                                     type="text"
-                                    value={user.name}
-                                    readOnly
-                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl py-3 px-4 text-gray-500 focus:outline-none cursor-not-allowed"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Enter your full name"
+                                    className="w-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                 />
                             </div>
 

@@ -6,6 +6,7 @@ import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import { fetchBanners } from '../api/api';
 import { useNavigate } from 'react-router-dom';
+import { containsCSSVariable } from 'framer-motion';
 
 // Helper to extract Drive ID and format URL safely
 const getBannerImageUrl = (imgStr) => {
@@ -17,7 +18,7 @@ const getBannerImageUrl = (imgStr) => {
     }
     
     // Temporarily log URL for debugging
-    const url = `https://drive.google.com/uc?export=view&id=${id}`;
+    const url = `https://lh3.googleusercontent.com/d/${id}`;
     console.log('Generated Banner Image URL:', url);
     return url;
 };
@@ -64,6 +65,8 @@ const Hero = () => {
         );
     }
 
+    console.log("Banners:", banners);
+
     // Fallback if API fails or returns no active banners
     if (banners.length === 0) {
         return (
@@ -109,6 +112,7 @@ const Hero = () => {
                         }
 
                         const imgUrl = getBannerImageUrl(banner.Image);
+                        console.log(imgUrl)
                         if (!imgUrl) return null;
 
                         return (
@@ -119,7 +123,7 @@ const Hero = () => {
                                 >
                                     {/* Image with preloading for first slide */}
                                     <img 
-                                        src={imgUrl} 
+                                        src={'https://lh3.googleusercontent.com/d/' + banner.Image} 
                                         alt={banner.Title || `Banner ${index + 1}`} 
                                         className="w-full h-full object-cover transition-transform duration-[2000ms] ease-out group-hover/slide:scale-105" 
                                         loading={index === 0 ? "eager" : "lazy"} 
@@ -135,10 +139,10 @@ const Hero = () => {
                                         <div className="max-w-3xl transform translate-y-2 group-hover/slide:translate-y-0 transition-transform duration-500 ease-out">
                                             {/* Text Overlay */}
                                             <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold mb-3 md:mb-4 drop-shadow-2xl text-white">
-                                                {banner.Title || "Legacy Traces Collection"}
+                                                {banner.BannerText1 || "Legacy Traces Collection"}
                                             </h2>
                                             <p className="text-sm md:text-lg lg:text-xl mb-6 md:mb-8 drop-shadow-xl text-gray-200 line-clamp-2 md:line-clamp-none">
-                                                {banner.Subtitle || "Premium Tamil streetwear built to last. Wear your culture."}
+                                                {banner.BannerText2 || "Premium Tamil streetwear built to last. Wear your culture."}
                                             </p>
                                             
                                             {/* CTA Button */}
