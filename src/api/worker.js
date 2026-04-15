@@ -22,7 +22,19 @@ export default {
             "Content-Type": "application/json"
         };
         
-        if (request.method !== 'POST') {
+        const type = url.searchParams.get("type");
+        
+        // 🚨 NEW Admin Backend Protection for orders!
+        if (type === "order" && request.method === "GET") {
+            const email = url.searchParams.get("email");
+            
+            if (email !== "legacytraces24@gmail.com") {
+                return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers });
+            }
+            // (Put your actual DB fetching logic here, if this worker supports it)
+        }
+        
+        if (request.method !== 'POST' && request.method !== 'GET') {
             return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
         }
         

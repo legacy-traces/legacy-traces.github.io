@@ -17,6 +17,7 @@ import { UserProvider } from './context/UserContext';
 import ScrollToTop from './components/ScrollToTop';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/shipping-policy" element={<ShippingPolicy />} />

@@ -41,11 +41,37 @@ const Checkout = () => {
         return items.map(item => `${item.Name} (Size: ${item.size}, Qty: ${item.quantity})`).join("\n");
     };
 
-    const isPincodeValid = /^\d{6}$/.test(formData.pincode);
-    const firstDigit = isPincodeValid ? parseInt(formData.pincode[0], 10) : null;
-    const isFreeDelivery = firstDigit === 5 || firstDigit === 6;
-    const deliveryCharge = isPincodeValid ? (isFreeDelivery ? 0 : 40) : 0;
-    const isCodAvailable = isPincodeValid && isFreeDelivery;
+    const getDeliveryDetails = (pincode) => {
+        if (!pincode) return { charge: 0, message: "", error: null };
+        if (!/^\d{6}$/.test(pincode)) {
+            return { error: "Enter a valid 6-digit pincode", charge: 0, message: "" };
+        }
+
+        const prefix = pincode.substring(0, 2);
+
+        if (["60","61","62","63","64"].includes(prefix)) {
+            return { charge: 0, message: "Free Delivery available 🎉", isCod: true };
+        }
+
+        if (
+            ["50","51","52","53","54","55","56","57","58","59",
+             "66","67","68","69"].includes(prefix)
+        ) {
+            return { charge: 50, message: "₹50 delivery charges applied 🚚", isCod: false };
+        }
+
+        return {
+            charge: 0,
+            message: "Additional courier charges may apply. Our sales agent will contact you with exact details.",
+            isCod: false
+        };
+    };
+
+    const deliveryDetails = getDeliveryDetails(formData.pincode);
+    const isPincodeValid = !deliveryDetails.error && /^\d{6}$/.test(formData.pincode);
+    const deliveryCharge = isPincodeValid ? deliveryDetails.charge : 0;
+    const isFreeDelivery = isPincodeValid && deliveryCharge === 0 && deliveryDetails.message?.includes("Free");
+    const isCodAvailable = isPincodeValid && deliveryDetails.isCod;
 
     const subtotal = getCartTotal();
     const codCharge = isCod ? 70 : 0;
@@ -140,7 +166,7 @@ const Checkout = () => {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Please enter a valid email address';
         if (!/^\d{10}$/.test(formData.mobileNumber)) newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number';
         if (!formData.address?.trim()) newErrors.address = 'Address is required';
-        if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = 'Please enter a valid 6-digit pincode';
+        if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = 'Enter a valid 6-digit pincode';
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -217,7 +243,7 @@ const Checkout = () => {
             
             text += `\n*Charges:*\n`;
             text += `Subtotal: ₹${subtotal}\n`;
-            text += `Delivery Charge: ₹${deliveryCharge}\n`;
+            text += `Delivery Charge: ${isFreeDelivery ? 'Free' : (deliveryCharge > 0 ? '₹' + deliveryCharge : 'TBD')}\n`;
             if (isCod) {
                 text += `COD: ₹70\n`;
             }
@@ -413,7 +439,7 @@ const Checkout = () => {
                                     className={`w-full bg-gray-50 dark:bg-gray-900 border ${errors.pincode ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
                                 />
                                 <AnimatePresence>
-                                    {isPincodeValid && !errors.pincode && (
+                                    {isPincodeValid && !errors.pincode && deliveryDetails.message && (
                                         <motion.div 
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: 'auto' }}
@@ -421,7 +447,19 @@ const Checkout = () => {
                                             className="overflow-hidden"
                                         >
                                             <p className={`text-sm mt-2 font-medium ${isFreeDelivery ? 'text-green-500' : 'text-orange-500'}`}>
-                                                {isFreeDelivery ? 'Free Delivery Available 🎉' : 'Delivery charges apply 🚚'}
+                                                {deliveryDetails.message}
+                                            </p>
+                                        </motion.div>
+                                    )}
+                                    {formData.pincode.length > 0 && !isPincodeValid && !errors.pincode && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {deliveryDetails.error}
                                             </p>
                                         </motion.div>
                                     )}
@@ -491,9 +529,9 @@ const Checkout = () => {
                                         <span className="font-bold text-black dark:text-white">₹{subtotal}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
-                                        <span>Delivery Charge {isFreeDelivery ? '🎉' : '🚚'}</span>
+                                        <span>Delivery Charge {isFreeDelivery ? '🎉' : (!isFreeDelivery && deliveryCharge === 0 ? '' : '🚚')}</span>
                                         <span className={`font-bold ${isFreeDelivery ? 'text-green-500' : 'text-black dark:text-white'}`}>
-                                            {isFreeDelivery ? 'Free' : `₹${deliveryCharge}`}
+                                            {isFreeDelivery ? 'Free' : (deliveryCharge > 0 ? `₹${deliveryCharge}` : 'TBD')}
                                         </span>
                                     </div>
                                     

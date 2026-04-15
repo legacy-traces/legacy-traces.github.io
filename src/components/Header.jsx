@@ -56,9 +56,16 @@ const Header = () => {
                         </Link>
                         
                         {user ? (
-                            <Link to="/profile" className="w-8 h-8 rounded-full bg-primary text-black font-bold flex items-center justify-center text-sm shadow-sm hover:scale-105 transition-transform">
-                                {user?.name?.charAt(0).toUpperCase()}
-                            </Link>
+                            <>
+                                {user?.email === "legacytraces24@gmail.com" && (
+                                    <Link to="/admin" className="hidden md:flex items-center justify-center px-4 py-1.5 text-sm font-bold bg-black text-white dark:bg-white dark:text-black rounded-full hover:opacity-80 transition-opacity">
+                                        Admin Dashboard
+                                    </Link>
+                                )}
+                                <Link to="/profile" className="w-8 h-8 rounded-full bg-primary text-black font-bold flex items-center justify-center text-sm shadow-sm hover:scale-105 transition-transform">
+                                    {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}
+                                </Link>
+                            </>
                         ) : (
                             <Link to="/profile" className="hidden md:flex items-center justify-center px-4 py-1.5 text-sm font-bold bg-primary text-black rounded-full hover:bg-green-400 transition-colors">
                                 Login
@@ -97,6 +104,11 @@ const Header = () => {
                         <Link to="/contact" onClick={() => setIsMenuOpen(false)} className="block text-xl text-black dark:text-white hover:text-primary transition-colors">Contact</Link>
                         {!user && (
                             <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block text-xl text-primary font-bold transition-colors mt-4">Login / Register</Link>
+                        )}
+                        {user?.email === "legacytraces24@gmail.com" && (
+                            <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block text-xl text-black dark:text-white font-bold hover:text-primary transition-colors mt-4">
+                                🛡️ Admin Dashboard
+                            </Link>
                         )}
                     </nav>
                 </div>

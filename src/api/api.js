@@ -186,3 +186,31 @@ export async function saveOrder(orderData) {
     throw error;
   }
 }
+
+export async function fetchAdminOrders(email) {
+  try {
+    const response = await fetch(`${API_URL}?type=order&email=${encodeURIComponent(email)}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.orders || data.data || data || [];
+  } catch (error) {
+    console.error('Error fetching admin orders:', error);
+    return [];
+  }
+}
+
+export async function updateOrderStatus(orderId, status) {
+  try {
+    const response = await fetch(`${API_URL}?type=order&action=updateStatus`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ orderId, status })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    throw error;
+  }
+}

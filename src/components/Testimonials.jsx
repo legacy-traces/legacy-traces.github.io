@@ -56,7 +56,7 @@ const Testimonials = () => {
                 }}
                 className="testimonial-swiper pb-12"
             >
-                {testimonials.map((testimonial) => (
+                {testimonials.slice(0, 7).map((testimonial) => (
                     <SwiperSlide key={testimonial.id}>
                         <div className="bg-white p-8 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] h-full flex flex-col items-center text-center transition-transform hover:-translate-y-1">
                             <div className="flex mb-4">

@@ -171,7 +171,16 @@ const Profile = () => {
                     <h1 className="text-4xl font-bold font-heading bg-clip-text text-transparent bg-gradient-to-r from-primary to-green-600 mb-2">My Profile</h1>
                     <p className="text-gray-500 dark:text-gray-400">Manage your account details and shipping preferences.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                    {user?.email === "legacytraces24@gmail.com" && (
+                        <Link
+                            to="/admin"
+                            className="flex items-center gap-2 text-white font-bold px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black hover:opacity-80 transition-opacity border border-transparent shadow-md"
+                        >
+                            <ShieldCheck size={16} />
+                            <span>Admin Board</span>
+                        </Link>
+                    )}
                     <Link
                         to="/orders"
                         className="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-bold px-4 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700"

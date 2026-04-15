@@ -47,7 +47,14 @@ const StarRating = ({ value, onChange, readonly = false }) => {
 };
 
 const OrderCard = ({ order, onClick }) => {
-    const status = order.OrderStatus || 'New';
+    console.log("Order Data:", order);
+    
+    const status = order.OrderStatus || "New";
+    const trackingId = order.TrackingId || "N/A";
+    const amount = order.AmountPaid === null ? 0 : Number(order.AmountPaid);
+    const cod = order.COD === "Yes";
+    const totalItems = order.TotalTshirts || 0;
+
     const cfg = statusConfig[status] || statusConfig['New'];
 
     return (
@@ -64,14 +71,13 @@ const OrderCard = ({ order, onClick }) => {
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <p className="font-bold text-sm truncate">{order.TrackingId || 'N/A'}</p>
+                        <p className="font-bold text-sm truncate">{trackingId}</p>
                         <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${cfg.color}`}>
-                            {cfg.icon} {cfg.label}
+                            {cfg.icon} {status}
                         </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {order.TotalTshirts || 0} item{(order.TotalTshirts || 0) !== 1 ? 's' : ''} &nbsp;·&nbsp; ₹{order.AmountPaid || 0}
-                        {order.COD === 'Yes' ? ' &nbsp;·&nbsp; COD' : ''}
+                        {totalItems} item{totalItems > 1 ? "s" : ""} · ₹{amount} · {cod ? "COD" : "Prepaid"}
                     </p>
                 </div>
             </div>
@@ -222,7 +228,7 @@ const Orders = () => {
                     const c = statusConfig[s] || statusConfig['New'];
                     return (
                         <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full mb-6 ${c.color}`}>
-                            {c.icon} {c.label}
+                            {c.icon} {s}
                         </span>
                     );
                 })()}
@@ -259,7 +265,7 @@ const Orders = () => {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Amount Paid</span>
-                            <span className="font-bold text-primary">₹{selectedOrder.AmountPaid || 0}</span>
+                            <span className="font-bold text-primary">₹{selectedOrder.AmountPaid === null ? 0 : Number(selectedOrder.AmountPaid)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-500">Payment Mode</span>
