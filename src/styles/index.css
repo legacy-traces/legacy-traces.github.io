@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --color-primary: #00e676;
     --font-sans: 'Inter', sans-serif;
@@ -24,6 +26,14 @@ body {
 .swiper-button-next,
 .swiper-button-prev {
     color: var(--color-primary) !important;
+}
+
+/* Hide swiper arrows on mobile */
+@media (max-width: 767px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+        display: none !important;
+    }
 }
 
 .swiper-pagination-bullet-active {

@@ -22,20 +22,20 @@ const features = [
 
 const WhyChooseUs = () => {
     return (
-        <section className="container mx-auto px-4 py-20">
+        <section className="container mx-auto px-4 py-10 md:py-12">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                className="text-center mb-16"
+                className="text-center mb-8 md:mb-10"
             >
                 <h2 className="text-3xl md:text-4xl font-heading font-bold uppercase tracking-tight">
                     WHY CHOOSE US?
                 </h2>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 max-w-6xl mx-auto">
                 {features.map((feature, index) => (
                     <motion.div
                         key={index}

@@ -1,4 +1,4 @@
-const API_URL = 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
+const API_URL = import.meta.env.VITE_API_URL || 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
 
 // Helper to construct image URL
 export const getImageUrl = (imageId) => {

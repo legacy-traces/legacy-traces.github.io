@@ -1,48 +1,44 @@
-import React from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation } from 'swiper/modules';
-import 'swiper/css';
-import 'swiper/css/navigation';
+import React, { useCallback } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import ProductCard from './ProductCard';
 import { Link } from 'react-router-dom';
 
 const ProductCarousel = ({ title, products = [] }) => {
+    const [emblaRef] = useEmblaCarousel({
+        align: 'start',
+        containScroll: 'trimSnaps',
+        dragFree: false,
+        slidesToScroll: 1,
+    });
+
     if (!products.length) return null;
 
     return (
-        <section className="container mx-auto px-4 mt-16">
-            <div className="flex justify-between items-end mb-8">
-                <h2 className="text-3xl font-heading font-bold">{title}</h2>
-                <Link to="/shop" className="text-primary font-medium hover:underline">View All</Link>
+        <section className="container mx-auto px-4 mt-8 md:mt-10">
+            <div className="flex justify-between items-end mb-5 md:mb-6">
+                <h2 className="text-2xl md:text-3xl font-heading font-bold">{title}</h2>
+                <Link to="/shop" className="text-primary font-medium hover:underline text-sm md:text-base">View All</Link>
             </div>
 
-            <Swiper
-                slidesPerView={1.5}
-                spaceBetween={16}
-                navigation={true}
-                modules={[Navigation]}
-                breakpoints={{
-                    640: {
-                        slidesPerView: 2.5,
-                        spaceBetween: 20,
-                    },
-                    768: {
-                        slidesPerView: 3.5,
-                        spaceBetween: 24,
-                    },
-                    1024: {
-                        slidesPerView: 4,
-                        spaceBetween: 24,
-                    },
-                }}
-                className="product-swiper !pb-10 !px-2"
-            >
-                {products.map((product) => (
-                    <SwiperSlide key={product.ID}>
-                        <ProductCard product={product} />
-                    </SwiperSlide>
-                ))}
-            </Swiper>
+            {/* Embla viewport */}
+            <div className="overflow-hidden -mx-1" ref={emblaRef}>
+                <div className="flex touch-pan-y">
+                    {products.map((product) => (
+                        <div
+                            key={product.ID}
+                            className="
+                                flex-none pl-2
+                                w-[48%]
+                                sm:w-[38%]
+                                md:w-[30%]
+                                lg:w-[25%]
+                            "
+                        >
+                            <ProductCard product={product} />
+                        </div>
+                    ))}
+                </div>
+            </div>
         </section>
     );
 };

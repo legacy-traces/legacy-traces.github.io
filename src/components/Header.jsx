@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, ShoppingBag, Sun, Moon, X, Heart } from 'lucide-react';
+import { Menu, ShoppingBag, Sun, Moon, X, Heart, ChevronDown } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useCart } from '../context/CartContext';
@@ -16,24 +16,44 @@ const Header = () => {
     return (
         <>
             <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
-                <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-                    {/* Logo */}
-                    <Link to="/" className="text-2xl font-bold font-heading tracking-wider">
-                        LEGACY TRACES
-                    </Link>
+                <div className="container mx-auto px-2 md:px-4 py-4 flex items-center justify-between">
+                    {/* Mobile: Hamburger + Logo on Left */}
+                    <div className="flex items-center gap-1 md:gap-0">
+                        {/* Hamburger - only mobile, sits left of logo */}
+                        <button className="flex md:hidden p-2 text-black dark:text-white cursor-pointer" onClick={() => setIsMenuOpen(true)}>
+                            <Menu size={24} />
+                        </button>
+                        {/* Logo */}
+                        <Link to="/" className="text-xl sm:text-2xl font-bold font-heading tracking-wider whitespace-nowrap">
+                            LEGACY TRACES
+                        </Link>
+                    </div>
 
-                    {/* Desktop Nav */}
+                    {/* Desktop Nav - ServiceNow Portal Taxonomy style */}
                     <nav className="hidden md:flex gap-8 items-center font-medium ">
                         <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-                        <Link to="/shop" className="hover:text-primary transition-colors">Shop</Link>
+                        
+                        {/* Dropdown for Shop / Products Taxonomy */}
+                        <div className="relative group py-2">
+                            <Link to="/shop" className="hover:text-primary transition-colors flex items-center gap-1">
+                                Shop
+                                <ChevronDown size={16} />
+                            </Link>
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1001] overflow-hidden">
+                                <Link to="/shop" className="block px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary transition-colors">All Products</Link>
+                                <Link to="/shop?category=T-Shirt" className="block px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary transition-colors">T-Shirts</Link>
+                                <Link to="/shop?category=Hoodie" className="block px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-primary transition-colors">Hoodies</Link>
+                            </div>
+                        </div>
+
                         <Link to="/customize" className="hover:text-primary transition-colors">Customize</Link>
                         <Link to="/about" className="hover:text-primary transition-colors">Our Story</Link>
                         <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
                     </nav>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-4">
-                        <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    {/* Actions on Right */}
+                    <div className="w-1/4 md:w-auto flex items-center gap-2 md:gap-4 justify-end">
+                        <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer" aria-label="Toggle theme">
                             {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
 
@@ -59,10 +79,10 @@ const Header = () => {
                             <>
                                 {user?.email === "legacytraces24@gmail.com" && (
                                     <Link to="/admin" className="hidden md:flex items-center justify-center px-4 py-1.5 text-sm font-bold bg-black text-white dark:bg-white dark:text-black rounded-full hover:opacity-80 transition-opacity">
-                                        Admin Dashboard
+                                        Admin
                                     </Link>
                                 )}
-                                <Link to="/profile" className="w-8 h-8 rounded-full bg-primary text-black font-bold flex items-center justify-center text-sm shadow-sm hover:scale-105 transition-transform">
+                                <Link to="/profile" className="w-8 h-8 rounded-full bg-primary text-black font-bold flex items-center justify-center text-sm shadow-sm hover:scale-105 transition-transform shrink-0">
                                     {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}
                                 </Link>
                             </>
@@ -71,11 +91,16 @@ const Header = () => {
                                 Login
                             </Link>
                         )}
-
-                        <button className="md:hidden p-2" onClick={() => setIsMenuOpen(true)}>
-                            <Menu size={24} />
-                        </button>
                     </div>
+                </div>
+
+                {/* ServiceNow Portal Mobile Taxonomy Navigation */}
+                <div className="md:hidden border-t border-gray-150 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex gap-2 overflow-x-auto py-2 px-3 scrollbar-none">
+                    <Link to="/shop" className="text-[11px] font-semibold whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full hover:text-primary">Shop All</Link>
+                    <Link to="/shop?category=T-Shirt" className="text-[11px] font-semibold whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full hover:text-primary">T-Shirts</Link>
+                    <Link to="/shop?category=Hoodie" className="text-[11px] font-semibold whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full hover:text-primary">Hoodies</Link>
+                    <Link to="/customize" className="text-[11px] font-semibold whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full hover:text-primary">Customize</Link>
+                    <Link to="/about" className="text-[11px] font-semibold whitespace-nowrap bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full hover:text-primary">Our Story</Link>
                 </div>
 
                 {/* Mobile Menu Overlay */}
@@ -92,7 +117,7 @@ const Header = () => {
                 >
                     <div className="p-5 flex justify-between items-center border-b border-gray-200 dark:border-gray-800 shrink-0">
                         <h2 className="text-xl font-bold font-heading text-black dark:text-white">MENU</h2>
-                        <button onClick={() => setIsMenuOpen(false)} className="p-2 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors shrink-0">
+                        <button onClick={() => setIsMenuOpen(false)} className="p-2 text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors shrink-0 cursor-pointer">
                             <X size={24} />
                         </button>
                     </div>

@@ -9,7 +9,7 @@ import {
     ShoppingBag, Truck, CheckCircle2, Clock, AlertCircle
 } from 'lucide-react';
 
-const API_URL = 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
+const API_URL = import.meta.env.VITE_API_URL || 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
 
 const statusConfig = {
     'New':        { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',  icon: <Clock size={12} />, label: 'New' },

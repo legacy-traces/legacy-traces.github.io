@@ -226,6 +226,8 @@ const Checkout = () => {
             amountPaid: finalTotal
         };
 
+        const whatsappWindow = window.open('about:blank', '_blank');
+
         try {
             await saveOrder(orderData);
 
@@ -250,16 +252,22 @@ const Checkout = () => {
             text += `\n*Total Amount:* ₹${finalTotal}`;
 
             const encodedMessage = encodeURIComponent(text);
-            const waNumber = '919360685192'; 
-            const url = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodedMessage}`;
+            const waNumber = '919360685192';
+            const url = `https://wa.me/${waNumber}?text=${encodedMessage}`;
 
-            setTimeout(() => {
-                window.open(url, "_blank");
-                clearCart();
-                setIsPlacingOrder(false);
-            }, 1200);
+            if (whatsappWindow && !whatsappWindow.closed) {
+                whatsappWindow.location.href = url;
+            } else {
+                window.location.assign(url);
+            }
+
+            clearCart();
+            setIsPlacingOrder(false);
 
         } catch (error) {
+            if (whatsappWindow && !whatsappWindow.closed) {
+                whatsappWindow.close();
+            }
             console.error("Failed to place order:", error);
             setIsPlacingOrder(false);
             alert("Failed to place order. Please try again.");

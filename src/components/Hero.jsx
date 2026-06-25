@@ -100,8 +100,8 @@ const Hero = () => {
                         clickable: true,
                         dynamicBullets: true,
                     }}
-                    navigation={true}
-                    modules={[Autoplay, Pagination, Navigation]}
+                    navigation={false}
+                    modules={[Autoplay, Pagination]}
                     className="mySwiper h-[300px] md:h-[400px] lg:h-[500px] w-full"
                 >
                     {banners.filter(b => b.Image).map((banner, index) => {

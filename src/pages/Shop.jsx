@@ -18,17 +18,16 @@ import { useSearchParams } from 'react-router-dom';
 var collection = 'All'
 
 const Shop = () => {
-
     const [searchParams] = useSearchParams();
-    let collection = searchParams.get('collection') || "All"
-
+    const collectionParam = searchParams.get('collection') || "All";
+    const categoryParam = searchParams.get('category') || "All";
 
     const [products, setProducts] = useState([]);
     const [collections, setCollections] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedCollection, setSelectedCollection] = useState(collection);
-    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedCollection, setSelectedCollection] = useState(collectionParam);
+    const [selectedCategory, setSelectedCategory] = useState(categoryParam);
     const [sortOrder, setSortOrder] = useState('default'); // default, lowToHigh, highToLow
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -40,6 +39,11 @@ const Shop = () => {
             setLoading(false);
         });
     }, []);
+
+    useEffect(() => {
+        setSelectedCollection(searchParams.get('collection') || "All");
+        setSelectedCategory(searchParams.get('category') || "All");
+    }, [searchParams]);
 
 
     // Filter and Sort Logic

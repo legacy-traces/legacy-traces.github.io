@@ -7,8 +7,6 @@ import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, ShieldCheck, Loader2, LogOut, Package } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
-const API_URL = 'https://snowy-snowflake-732e.legacytracesdev.workers.dev/';
-
 const Profile = () => {
     const { user, setUser, logout } = useUser();
     const navigate = useNavigate();
