@@ -8,8 +8,12 @@ import {
 import {
     Package, DollarSign, ShoppingCart,
     CreditCard, Truck, RefreshCcw, CheckCircle, Shirt, Eye, X,
-    ChevronUp, ChevronDown, ChevronsUpDown, Search, ChevronLeft, ChevronRight
+    ChevronUp, ChevronDown, ChevronsUpDown, Search, ChevronLeft, ChevronRight,
+    MessageCircle
 } from 'lucide-react';
+
+// Indian 10-digit mobile → wa.me link (backend validates mobile as ^\d{10}$)
+const whatsappLink = (mobile) => `https://wa.me/91${String(mobile || '').replace(/\D/g, '')}`;
 
 const ALL_ORDER_STATUSES = ['New', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Pending Payment', 'Payment Failed'];
 
@@ -48,12 +52,18 @@ const AdminDashboard = () => {
     // ── Orders table: search / filter / sort / pagination ─────────────────────
     const [searchName,    setSearchName]    = useState('');
     const [searchId,      setSearchId]      = useState('');
+    const [searchMobile,  setSearchMobile]  = useState('');
     const [filterStatus,  setFilterStatus]  = useState('');
     const [filterType,    setFilterType]    = useState(''); // '' | 'COD' | 'Prepaid'
     const [sortCol,       setSortCol]       = useState('id');
     const [sortDir,       setSortDir]       = useState('desc');
     const [page,          setPage]          = useState(1);
     const [pageSize,      setPageSize]      = useState(20);
+
+    // Expandable row detail (address, product list, tracking/shipping edit)
+    const [expandedOrderId,  setExpandedOrderId]  = useState(null);
+    const [orderEditState,   setOrderEditState]   = useState({}); // { [id]: { trackingId, shippingCompany } }
+    const [savingOrderId,    setSavingOrderId]    = useState(null);
 
     // ── Auth guard — isAdmin is state-only (never stored in localStorage) ─────
     // When user.email exists but idToken is absent the session is being restored
@@ -87,7 +97,16 @@ const AdminDashboard = () => {
             if (!user?.idToken) return;
             try {
                 const data = await fetchAdminOrders(user.idToken);
-                setOrders(Array.isArray(data) ? data : []);
+                const rows = Array.isArray(data) ? data : [];
+                setOrders(rows);
+                const init = {};
+                rows.forEach(o => {
+                    init[o.id] = {
+                        trackingId:      o.TrackingId || '',
+                        shippingCompany: o.ShippingCompany || '',
+                    };
+                });
+                setOrderEditState(init);
             } catch {}
             setLoading(false);
         };
@@ -137,6 +156,24 @@ const AdminDashboard = () => {
         } catch {
             alert('Failed to update order status.');
         }
+    };
+
+    const handleOrderEdit = (id, field, value) =>
+        setOrderEditState(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+
+    const saveOrderShipping = async (orderId) => {
+        const e = orderEditState[orderId];
+        if (!e) return;
+        setSavingOrderId(orderId);
+        try {
+            await updateOrderStatus(user.idToken, orderId, null, e.trackingId || null, e.shippingCompany || null);
+            setOrders(prev => prev.map(o => o.id === orderId
+                ? { ...o, TrackingId: e.trackingId, ShippingCompany: e.shippingCompany }
+                : o));
+        } catch {
+            alert('Failed to update shipping details.');
+        }
+        setSavingOrderId(null);
     };
 
     // ── Custom orders ─────────────────────────────────────────────────────────
@@ -289,6 +326,7 @@ const AdminDashboard = () => {
                         const filtered = orders
                             .filter(o => !searchId   || String(o.id).includes(searchId.trim()))
                             .filter(o => !searchName || (o.Name || '').toLowerCase().includes(searchName.toLowerCase()))
+                            .filter(o => !searchMobile || String(o.Mobile || '').includes(searchMobile.trim()))
                             .filter(o => !filterStatus || (o.OrderStatus || 'New') === filterStatus)
                             .filter(o => !filterType  || (filterType === 'COD' ? o.COD === 'Yes' : o.COD !== 'Yes'))
                             .sort((a, b) => {
@@ -362,6 +400,16 @@ const AdminDashboard = () => {
                                                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg pl-7 pr-3 py-1.5 w-44 focus:outline-none focus:ring-1 focus:ring-primary"
                                             />
                                         </div>
+                                        <div className="relative">
+                                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            <input
+                                                type="text"
+                                                placeholder="Phone number…"
+                                                value={searchMobile}
+                                                onChange={e => { setSearchMobile(e.target.value); setPage(1); }}
+                                                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg pl-7 pr-3 py-1.5 w-36 focus:outline-none focus:ring-1 focus:ring-primary"
+                                            />
+                                        </div>
                                         <select
                                             value={filterStatus}
                                             onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
@@ -379,9 +427,9 @@ const AdminDashboard = () => {
                                             <option value="COD">COD</option>
                                             <option value="Prepaid">Prepaid</option>
                                         </select>
-                                        {(searchId || searchName || filterStatus || filterType) && (
+                                        {(searchId || searchName || searchMobile || filterStatus || filterType) && (
                                             <button
-                                                onClick={() => { setSearchId(''); setSearchName(''); setFilterStatus(''); setFilterType(''); setPage(1); }}
+                                                onClick={() => { setSearchId(''); setSearchName(''); setSearchMobile(''); setFilterStatus(''); setFilterType(''); setPage(1); }}
                                                 className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 px-2 py-1.5 border border-red-200 dark:border-red-800 rounded-lg"
                                             >
                                                 <X size={12} /> Clear
@@ -404,6 +452,7 @@ const AdminDashboard = () => {
                                                         Customer <SortIcon col="name" />
                                                     </button>
                                                 </th>
+                                                <th className="p-4 font-medium">Mobile</th>
                                                 <th className="p-4 font-medium">
                                                     <button onClick={() => toggleSort('amount')} className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100">
                                                         Amount <SortIcon col="amount" />
@@ -415,22 +464,40 @@ const AdminDashboard = () => {
                                                         Status <SortIcon col="status" />
                                                     </button>
                                                 </th>
+                                                <th className="p-4 font-medium">Shipping Co.</th>
                                                 <th className="p-4 font-medium">Update Status</th>
+                                                <th className="p-4 font-medium">Details</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {paginated.length > 0 ? paginated.map(order => {
-                                                const id     = order.id;
-                                                const name   = order.Name   || 'N/A';
-                                                const amount = order.AmountPaid || 0;
-                                                const isCOD  = order.COD === 'Yes';
-                                                const status = order.OrderStatus || 'New';
+                                                const id       = order.id;
+                                                const name     = order.Name   || 'N/A';
+                                                const amount   = order.AmountPaid || 0;
+                                                const isCOD    = order.COD === 'Yes';
+                                                const status   = order.OrderStatus || 'New';
+                                                const isOpen   = expandedOrderId === id;
+                                                const edit     = orderEditState[id] || { trackingId: '', shippingCompany: '' };
                                                 return (
-                                                    <tr key={id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                                <React.Fragment key={id}>
+                                                    <tr className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                                         <td className="p-4 font-mono font-semibold text-primary">LT-{id}</td>
                                                         <td className="p-4">
                                                             <div className="font-medium">{name}</div>
                                                             {order.Email && <div className="text-xs text-gray-400 truncate max-w-[160px]">{order.Email}</div>}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {order.Mobile ? (
+                                                                <a
+                                                                    href={whatsappLink(order.Mobile)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    title="Message on WhatsApp"
+                                                                    className="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium hover:underline"
+                                                                >
+                                                                    <MessageCircle size={14} /> {order.Mobile}
+                                                                </a>
+                                                            ) : <span className="text-gray-400">—</span>}
                                                         </td>
                                                         <td className="p-4 font-semibold text-primary">₹{amount}</td>
                                                         <td className="p-4">
@@ -450,6 +517,9 @@ const AdminDashboard = () => {
                                                                 {status}
                                                             </span>
                                                         </td>
+                                                        <td className="p-4 text-sm">
+                                                            {order.ShippingCompany || <span className="text-gray-400">—</span>}
+                                                        </td>
                                                         <td className="p-4">
                                                             <select
                                                                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2"
@@ -459,11 +529,64 @@ const AdminDashboard = () => {
                                                                 {ALL_ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                                                             </select>
                                                         </td>
+                                                        <td className="p-4">
+                                                            <button
+                                                                onClick={() => setExpandedOrderId(isOpen ? null : id)}
+                                                                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+                                                                title="View order details"
+                                                            >
+                                                                {isOpen ? <ChevronUp size={16} /> : <Eye size={16} />}
+                                                            </button>
+                                                        </td>
                                                     </tr>
+                                                    {isOpen && (
+                                                        <tr className="bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
+                                                            <td colSpan="8" className="p-5">
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                                    <div>
+                                                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Shipping Address</p>
+                                                                        <p className="text-sm">{order.Address || '—'}</p>
+                                                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-3 mb-1">Products</p>
+                                                                        <p className="text-sm whitespace-pre-line">{order.ProductList || '—'}</p>
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-3">
+                                                                        <div>
+                                                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Shipping Company</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={edit.shippingCompany}
+                                                                                onChange={ev => handleOrderEdit(id, 'shippingCompany', ev.target.value)}
+                                                                                placeholder="e.g. Delhivery, Blue Dart…"
+                                                                                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Tracking ID</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={edit.trackingId}
+                                                                                onChange={ev => handleOrderEdit(id, 'trackingId', ev.target.value)}
+                                                                                placeholder="Courier tracking number"
+                                                                                className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                            />
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => saveOrderShipping(id)}
+                                                                            disabled={savingOrderId === id}
+                                                                            className="self-start px-5 py-2 bg-primary text-black rounded-lg font-bold text-sm hover:bg-green-400 transition-colors disabled:opacity-60"
+                                                                        >
+                                                                            {savingOrderId === id ? 'Saving…' : 'Save Shipping Details'}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
                                                 );
                                             }) : (
                                                 <tr>
-                                                    <td colSpan="6" className="p-8 text-center text-gray-500">
+                                                    <td colSpan="8" className="p-8 text-center text-gray-500">
                                                         {orders.length === 0 ? 'No orders yet.' : 'No orders match your filters.'}
                                                     </td>
                                                 </tr>

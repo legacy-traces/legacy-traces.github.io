@@ -130,9 +130,9 @@ export const fetchAdminOrders = async (idToken) => {
     return data.orders || [];
 };
 
-// Admin only — update order status and optionally a tracking ID.
-export const updateOrderStatus = async (idToken, orderId, status, trackingId) =>
-    post('updateStatus', { idToken, orderId, status, trackingId });
+// Admin only — update order status and/or tracking ID and/or shipping company.
+export const updateOrderStatus = async (idToken, orderId, status, trackingId, shippingCompany) =>
+    post('updateStatus', { idToken, orderId, status, trackingId, shippingCompany });
 
 // ── Addresses ────────────────────────────────────────────────────────────────
 
