@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, ShoppingBag, Sun, Moon, X, Heart, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useCart } from '../context/CartContext';
@@ -69,12 +70,23 @@ const Header = () => {
                         </Link>
 
                         <Link to="/cart" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <ShoppingBag size={20} />
-                            {getCartCount() > 0 && (
-                                <span className="absolute top-0 right-0 bg-primary text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {getCartCount()}
-                                </span>
-                            )}
+                            <motion.div key={getCartCount()} initial={{ scale: 1 }} animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 0.35, ease: 'easeOut' }}>
+                                <ShoppingBag size={20} />
+                            </motion.div>
+                            <AnimatePresence>
+                                {getCartCount() > 0 && (
+                                    <motion.span
+                                        key={getCartCount()}
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        exit={{ scale: 0 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                        className="absolute top-0 right-0 bg-primary text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
+                                    >
+                                        {getCartCount()}
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
                         </Link>
                         
                         {user ? (

@@ -23,10 +23,27 @@ const getBannerImageUrl = (imgStr) => {
     return url;
 };
 
+// Matches the Tailwind `md` breakpoint used everywhere else in this app
+// (e.g. Hero's own h-[300px] md:h-[400px]) so "mobile" here means the same
+// thing it means in every responsive class in the codebase.
+const MOBILE_QUERY = '(max-width: 767px)';
+
 const Hero = () => {
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(() =>
+        typeof window !== 'undefined' ? window.matchMedia(MOBILE_QUERY).matches : false
+    );
     const navigate = useNavigate();
+
+    // Tracks live so a banner set for one device swaps in immediately if the
+    // browser is resized/rotated across the breakpoint, not just on reload.
+    useEffect(() => {
+        const mql = window.matchMedia(MOBILE_QUERY);
+        const handler = (e) => setIsMobile(e.matches);
+        mql.addEventListener('change', handler);
+        return () => mql.removeEventListener('change', handler);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -50,11 +67,20 @@ const Hero = () => {
                 console.error("Failed to fetch banners", err);
                 if (isMounted) setLoading(false);
             });
-            
+
         return () => {
             isMounted = false;
         };
     }, []);
+
+    // A banner with no Device set (existing rows, or "show everywhere") is
+    // shown on both; one explicitly tagged 'mobile' or 'desktop' only shows
+    // on that device.
+    const deviceBanners = banners.filter(b => {
+        const device = (b.Device || '').toLowerCase();
+        if (!device) return true;
+        return device === (isMobile ? 'mobile' : 'desktop');
+    });
 
     // Handle Loading Skeleton
     if (loading) {
@@ -65,10 +91,8 @@ const Hero = () => {
         );
     }
 
-    console.log("Banners:", banners);
-
-    // Fallback if API fails or returns no active banners
-    if (banners.length === 0) {
+    // Fallback if API fails or returns no active banners for this device
+    if (deviceBanners.length === 0) {
         return (
             <div className="container mx-auto px-4 mt-6">
                 <div className="relative w-full min-h-[380px] md:min-h-[460px] lg:min-h-[540px] rounded-2xl overflow-hidden flex items-end justify-start bg-gradient-to-b from-sky-300 via-sky-200 to-white dark:from-sky-900 dark:via-slate-900 dark:to-[#121212] border border-gray-200 dark:border-gray-800">
@@ -106,7 +130,7 @@ const Hero = () => {
                     spaceBetween={0}
                     centeredSlides={true}
                     speed={800}
-                    loop={banners.length > 1}
+                    loop={deviceBanners.length > 1}
                     autoplay={{
                         delay: 4000,
                         disableOnInteraction: false,
@@ -119,7 +143,7 @@ const Hero = () => {
                     modules={[Autoplay, Pagination]}
                     className="mySwiper h-[300px] md:h-[400px] lg:h-[500px] w-full"
                 >
-                    {banners.filter(b => b.Image).map((banner, index) => {
+                    {deviceBanners.filter(b => b.Image).map((banner, index) => {
                         // Safe Redirection Path
                         let redirectPath = banner.Redirection || '/shop';
                         if (!redirectPath.startsWith('/')) {

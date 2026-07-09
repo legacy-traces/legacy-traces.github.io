@@ -5,11 +5,18 @@ import {
     Copy,
     Check,
     MessageCircle,
-    Twitter,
     Facebook,
     Send,
     Instagram
 } from 'lucide-react';
+
+// lucide-react's "Twitter" icon is the retired bird logo — X has no brand
+// icon in lucide, so the current wordmark is rendered inline instead.
+const XLogo = ({ size = 24 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
 
 const SharePopup = ({ isOpen, onClose, productName, productUrl }) => {
     const [copied, setCopied] = useState(false);
@@ -29,10 +36,10 @@ const SharePopup = ({ isOpen, onClose, productName, productUrl }) => {
             url: `https://api.whatsapp.com/send?text=${encodeURIComponent(productName + ' ' + productUrl)}`
         },
         {
-            name: 'Twitter',
-            icon: <Twitter size={24} />,
-            color: 'bg-[#1DA1F2]',
-            url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(productName)}`
+            name: 'X',
+            icon: <XLogo size={24} />,
+            color: 'bg-black',
+            url: `https://x.com/intent/tweet?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(productName)}`
         },
         {
             name: 'Facebook',

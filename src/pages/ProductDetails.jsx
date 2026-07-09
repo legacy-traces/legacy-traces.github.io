@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchProductById, fetchProducts, fetchAvailableCoupons, getImageUrl } from '../api/api';
 import { ShoppingCart, Heart, Share2, Truck, Plus, Minus, Tag } from 'lucide-react';
@@ -25,6 +25,8 @@ const ProductDetails = () => {
     const [pincode, setPincode] = useState('');
     const [pincodeStatus, setPincodeStatus] = useState(null); // 'success', 'error', 'failure'
     const [showCartToast, setShowCartToast] = useState(false);
+    const [cartToastKey, setCartToastKey] = useState(0);
+    const cartToastTimer = useRef(null);
     const [loadError, setLoadError] = useState(false);
     const [offers, setOffers] = useState([]);
     const { isFavorite, toggleFavorite } = useFavorites();
@@ -33,6 +35,8 @@ const ProductDetails = () => {
 
     const decreaseQty = () => setQuantity(q => Math.max(1, q - 1));
     const increaseQty = () => setQuantity(q => Math.min(10, q + 1));
+
+    useEffect(() => () => clearTimeout(cartToastTimer.current), []);
 
     const handlePincodeChange = (e) => {
         const val = e.target.value;
@@ -335,8 +339,15 @@ const ProductDetails = () => {
                                 onClick={() => {
                                     if (selectedSize) {
                                         addToCart(product, selectedSize, quantity);
+                                        // Bump the key so AnimatePresence treats every click as a
+                                        // fresh element — otherwise clicking again while the toast
+                                        // is still showing just leaves it mounted and the bounce
+                                        // never replays. Also reset the auto-hide timer so a rapid
+                                        // second click doesn't get cut short by the first click's timeout.
+                                        setCartToastKey(k => k + 1);
                                         setShowCartToast(true);
-                                        setTimeout(() => setShowCartToast(false), 3000);
+                                        clearTimeout(cartToastTimer.current);
+                                        cartToastTimer.current = setTimeout(() => setShowCartToast(false), 3000);
                                     }
                                 }}
                                 className={`flex-1 font-bold py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm md:text-base ${selectedSize
@@ -372,14 +383,14 @@ const ProductDetails = () => {
                                 value={pincode}
                                 onChange={handlePincodeChange}
                                 placeholder="Enter Pincode"
-                                className={`flex-1 bg-white dark:bg-gray-900 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${pincodeStatus === 'error' ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
+                                className={`flex-1 min-w-0 bg-white dark:bg-gray-900 border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${pincodeStatus === 'error' ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
                                     }`}
                                 maxLength={6}
                                 inputMode="numeric"
                             />
                             <button
                                 type="submit"
-                                className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
+                                className="shrink-0 px-5 md:px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap"
                             >
                                 CHECK
                             </button>
@@ -454,18 +465,43 @@ const ProductDetails = () => {
             <FeedbackSection productId={product.ID} />
 
             {/* Add to Cart Toast Container */}
-            <div className="fixed top-24 left-0 right-0 md:left-auto md:right-8 z-50 flex justify-center md:justify-end pointer-events-none px-4">
-                <AnimatePresence>
+            <div className="fixed top-36 left-0 right-0 md:left-auto md:right-8 z-50 flex justify-center md:justify-end pointer-events-none px-4">
+                {/* mode="wait" forces the previous toast to fully exit before the
+                    next one mounts — without it, re-adding (e.g. after changing
+                    size) overlapped the old toast's fade-out with the new one's
+                    entrance, leaving a visible "ghost" of the first popup. */}
+                <AnimatePresence mode="wait">
                     {showCartToast && (
                         <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="bg-white dark:bg-gray-800 text-black dark:text-white px-6 py-4 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 pointer-events-auto flex items-center gap-3"
+                            key={cartToastKey}
+                            initial={{ opacity: 0, y: -80, scale: 0.5 }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                // Falls, then bounces twice with decreasing height —
+                                // like a dropped ball settling — instead of one
+                                // spring overshoot.
+                                y: [-80, 0, -24, 0, -8, 0],
+                            }}
+                            exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
+                            transition={{
+                                opacity: { duration: 0.2 },
+                                scale: { duration: 0.35, ease: 'easeOut' },
+                                y: {
+                                    duration: 0.9,
+                                    times: [0, 0.45, 0.6, 0.75, 0.85, 1],
+                                    ease: ['easeIn', 'easeOut', 'easeIn', 'easeOut', 'easeIn'],
+                                },
+                            }}
+                            className="bg-white dark:bg-gray-800 text-black dark:text-white px-4 py-3 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 pointer-events-auto flex items-center gap-3"
                         >
-                            <span className="text-xl">✅</span>
-                            <span className="font-medium text-sm md:text-base">Product added to cart successfully</span>
+                            <img
+                                src={allImages[0]}
+                                alt={product.Name}
+                                className="w-10 h-10 rounded-lg object-cover shrink-0"
+                                referrerPolicy="no-referrer"
+                            />
+                            <span className="font-medium text-sm md:text-base">Added to Cart</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
