@@ -135,7 +135,7 @@ const Checkout = () => {
 
     // Delivery charge by pincode prefix (mirrors the backend calcDelivery exactly):
     //   • starts 67/68/69, or any 5x → ₹50
-    //   • starts 1 or 4              → ₹100
+    //   • starts 1, 4 or 7           → ₹100
     //   • everything else            → free (₹0)
     const getDeliveryDetails = (pincode) => {
         if (!pincode) return { charge: 0, message: '', error: null };
@@ -147,7 +147,7 @@ const Checkout = () => {
         const isCod = ['60', '61', '62', '63', '64'].includes(p2);
         let charge = 0;
         if (['67', '68', '69'].includes(p2) || p1 === '5') charge = 50;
-        else if (p1 === '1' || p1 === '4') charge = 100;
+        else if (p1 === '1' || p1 === '4' || p1 === '7') charge = 100;
         if (charge > 0)
             return { charge, message: `₹${charge} delivery charges applied 🚚`, isCod };
         return { charge: 0, message: 'Free Delivery available 🎉', isCod };
