@@ -28,7 +28,9 @@ import ScrollToTop from './components/ScrollToTop';
 import AnalyticsTracker from './components/AnalyticsTracker';
 
 // Silently re-authenticates via Google One-Tap when the user is known from
-// localStorage but the idToken was lost on page reload (it is never persisted).
+// localStorage but has no valid idToken — normally only once the cached
+// session in sessionStorage (see UserContext) has actually expired, since
+// that cache is what lets a page reload skip this One-Tap round trip entirely.
 const SessionGate = () => {
     const { user, setUser } = useUser();
 

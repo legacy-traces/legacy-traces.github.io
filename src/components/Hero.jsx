@@ -137,9 +137,10 @@ const Hero = () => {
                         const imgUrl = getImageUrl(banner.Image);
                         if (!imgUrl) return null;
 
-                        // show_text defaults to 1 in D1 — only an explicit 0 hides
-                        // the text/button overlay for an image-only banner.
+                        // show_text/show_button default to 1 in D1 — only an explicit 0
+                        // hides the text overlay or just the CTA button, independently.
                         const showText = Number(banner.ShowText ?? 1) !== 0;
+                        const showButton = Number(banner.ShowButton ?? 1) !== 0;
 
                         return (
                             <SwiperSlide key={banner.ID || index}>
@@ -173,9 +174,11 @@ const Hero = () => {
                                                 </p>
 
                                                 {/* CTA Button */}
-                                                <span className="inline-block bg-primary text-black px-6 md:px-8 py-2 md:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-primary/20 pointer-events-auto hover:brightness-90">
-                                                    {banner.ButtonText || "Shop Now"}
-                                                </span>
+                                                {showButton && (
+                                                    <span className="inline-block bg-primary text-black px-6 md:px-8 py-2 md:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-primary/20 pointer-events-auto hover:brightness-90">
+                                                        {banner.ButtonText || "Shop Now"}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     )}

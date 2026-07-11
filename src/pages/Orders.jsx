@@ -5,13 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import {
     Package, ChevronRight, ChevronLeft, Star,
-    ShieldCheck, MapPin, User, Check,
+    ShieldCheck, MapPin, User,
     ShoppingBag, Truck, CheckCircle2, Clock, AlertCircle, Shirt
 } from 'lucide-react';
 
-// DB status (left) → customer-facing label (right). Only these four statuses
-// participate in the step tracker below; anything else (Cancelled, Pending
-// Payment, Payment Failed) just shows as a plain badge with no stepper.
+// DB status (left) → customer-facing label (right).
 const statusConfig = {
     'New':             { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',       icon: <Clock size={12} />,        label: 'Confirmed' },
     'Processing':      { color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300', icon: <Package size={12} />,      label: 'Under Packaging' },
@@ -20,51 +18,6 @@ const statusConfig = {
     'Cancelled':       { color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',            icon: <AlertCircle size={12} />,  label: 'Cancelled' },
     'Pending Payment': { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300', icon: <Clock size={12} />,        label: 'Pending Payment' },
     'Payment Failed':  { color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400',            icon: <AlertCircle size={12} />,  label: 'Payment Failed' },
-};
-
-// The four DB statuses that form the linear tracking flow, in order — used to
-// render the step tracker and to know how many steps are "done" for a given
-// status (Delivered means all four are complete, not just the last one).
-const ORDER_STEPS = [
-    { key: 'New',        label: 'Confirmed' },
-    { key: 'Processing', label: 'Under Packaging' },
-    { key: 'Shipped',    label: 'Shipped' },
-    { key: 'Delivered',  label: 'Delivered' },
-];
-
-// Cancelled (and any pre-confirmation status like Pending Payment/Payment
-// Failed) doesn't fit a linear progress flow, so no stepper is shown for it —
-// the status badge above already communicates it clearly.
-const OrderStatusStepper = ({ status }) => {
-    const currentIndex = ORDER_STEPS.findIndex(s => s.key === status);
-    if (currentIndex === -1) return null;
-
-    return (
-        <div className="flex items-start">
-            {ORDER_STEPS.map((step, i) => {
-                const isDone = i <= currentIndex;
-                return (
-                    <React.Fragment key={step.key}>
-                        <div className="flex flex-col items-center gap-1.5 w-16 shrink-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                                isDone
-                                    ? 'bg-primary border-primary text-black'
-                                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
-                            }`}>
-                                {isDone ? <Check size={16} /> : i + 1}
-                            </div>
-                            <span className={`text-[10px] font-semibold text-center leading-tight ${isDone ? 'text-black dark:text-white' : 'text-gray-400'}`}>
-                                {step.label}
-                            </span>
-                        </div>
-                        {i < ORDER_STEPS.length - 1 && (
-                            <div className={`flex-1 h-0.5 mt-4 ${i < currentIndex ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                        )}
-                    </React.Fragment>
-                );
-            })}
-        </div>
-    );
 };
 
 // Custom (jersey / team-name design) order statuses — mirrors AdminDashboard's CUSTOM_STATUS_COLOR
@@ -452,6 +405,21 @@ const Orders = () => {
         if (match) setSelectedOrder(match);
     }, [orderId, orders]);
 
+    // /orders and /orders/:orderId render this same component without
+    // remounting, so navigating back to the plain list (e.g. clicking "My
+    // Orders" in the header while a detail view is open) wouldn't otherwise
+    // clear the previously selected order/custom order. The custom-order
+    // detail view has no URL param of its own — it stays on the bare /orders
+    // URL — so clicking "My Orders" again from there re-navigates to the same
+    // pathname. location.pathname alone doesn't change in that case, so
+    // location.key (unique per navigation) is also watched to catch it.
+    useEffect(() => {
+        if (!orderId && location.pathname === '/orders') {
+            setSelectedOrder(null);
+            setSelectedCustomOrder(null);
+        }
+    }, [orderId, location.pathname, location.key]);
+
     useEffect(() => {
         if (!user?.idToken) return;
         const fetchCustom = async () => {
@@ -529,35 +497,6 @@ const Orders = () => {
                     );
                 })()}
 
-                {/* Track Order — step tracker for the 4 statuses that form a
-                    linear flow; Cancelled/Pending Payment/Payment Failed don't
-                    get one (OrderStatusStepper returns null for those). */}
-                {(() => {
-                    const s = selectedOrder.OrderStatus || 'New';
-                    if (s === 'Cancelled') {
-                        return (
-                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 mb-4 flex items-center gap-3 text-red-700 dark:text-red-300">
-                                <AlertCircle size={20} className="shrink-0" />
-                                <p className="font-semibold text-sm">This order was cancelled.</p>
-                            </div>
-                        );
-                    }
-                    return (
-                        <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6 mb-4">
-                            <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-5">Track Order</h2>
-                            <OrderStatusStepper status={s} />
-                        </div>
-                    );
-                })()}
-
-                {/* Delivery Address */}
-                <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6 mb-4">
-                    <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <MapPin size={13} /> Delivery Address
-                    </h2>
-                    <p className="text-sm leading-relaxed">{selectedOrder.Address || 'No address on file'}</p>
-                </div>
-
                 {/* Order Summary */}
                 <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6 mb-4">
                     <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-4">Order Summary</h2>
@@ -584,21 +523,24 @@ const Orders = () => {
                     </div>
                 </div>
 
-                {/* Feedback */}
-                <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-                    <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-4">Rate This Order</h2>
-                    {alreadySubmitted ? (
-                        <div className="flex items-center gap-3 text-green-600 dark:text-green-400 font-semibold">
-                            <CheckCircle2 size={20} />
-                            Thank you! Your feedback has been submitted.
-                        </div>
-                    ) : (
+                {/* Delivery Address */}
+                <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6 mb-4">
+                    <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <MapPin size={13} /> Delivery Address
+                    </h2>
+                    <p className="text-sm leading-relaxed">{selectedOrder.Address || 'No address on file'}</p>
+                </div>
+
+                {/* Feedback — removed from the UI entirely once submitted, not just replaced with a thank-you note */}
+                {!alreadySubmitted && (
+                    <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+                        <h2 className="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-4">Rate This Order</h2>
                         <FeedbackForm
                             order={selectedOrder}
                             onSubmitted={() => handleFeedbackSubmitted(feedbackKey)}
                         />
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     }

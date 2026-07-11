@@ -53,6 +53,20 @@ const Home = () => {
         return orderA - orderB;
     });
 
+    // New Arrivals: active products sorted by the numeric portion of Product_ID (e.g. "LT-101" -> 101) descending
+    const isActiveProduct = (p) => {
+        const active = p.Active;
+        return active === undefined || active === null || active === true ||
+            active === 'TRUE' || active === 'true' || active === 1 || active === '1';
+    };
+    const newArrivalsProducts = products
+        .filter(isActiveProduct)
+        .sort((a, b) => {
+            const numA = parseInt(String(a.ID).replace(/\D/g, ''), 10) || 0;
+            const numB = parseInt(String(b.ID).replace(/\D/g, ''), 10) || 0;
+            return numB - numA;
+        });
+
     return (
         <main>
             <SEO
@@ -77,7 +91,7 @@ const Home = () => {
             <h1 className="sr-only">Legacy Traces – Premium Tamil Culture Streetwear</h1>
             <Hero />
             <ProductCarousel title="Trending Now" products={trendingProducts} />
-            <ProductCarousel title="New Arrivals" products={products} />
+            <ProductCarousel title="New Arrivals" products={newArrivalsProducts} />
             <Testimonials />
             <WhyChooseUs />
             {/* <ProductCarousel title="Best Sellers" products={products} /> */}

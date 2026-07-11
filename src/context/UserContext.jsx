@@ -1,43 +1,74 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 
 const UserContext = createContext();
 
 export const useUser = () => useContext(UserContext);
 
+const SESSION_KEY = 'authSession';
+
 // localStorage stores ONLY non-sensitive display fields: { email, name, phone }
-// The following are kept in React state ONLY (never written to localStorage):
-//   idToken  — short-lived Google ID JWT sent in every authenticated API call
-//   isAdmin  — derived from server on login; never persisted or trusted from storage
-// On reload the user sees their name/email from localStorage immediately,
-// but Google One-Tap re-authenticates them silently before any auth action.
+// idToken/isAdmin are never written to localStorage. They ARE cached in
+// sessionStorage (tab-scoped, wiped on browser/tab close) so a page reload —
+// or landing deep-linked into checkout — doesn't force a fresh Google
+// sign-in every single time. Only once the cached token's own ~1hr
+// Google-issued expiry actually passes does SessionGate (App.jsx) fall back
+// to silently re-authenticating via Google One-Tap.
+const restoreSession = () => {
+    try {
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (!session.idToken || !session.exp || session.exp * 1000 <= Date.now()) {
+            sessionStorage.removeItem(SESSION_KEY);
+            return null;
+        }
+        return { idToken: session.idToken, isAdmin: !!session.isAdmin };
+    } catch {
+        sessionStorage.removeItem(SESSION_KEY);
+        return null;
+    }
+};
 
 export const UserProvider = ({ children }) => {
     const [user, setUserState] = useState(() => {
+        let restored = null;
+
         // Migrate legacy key name
         const oldAuth = localStorage.getItem('googleAuthUser');
         if (oldAuth) {
             try {
                 const parsed = JSON.parse(oldAuth);
-                const migrated = { email: parsed.email, name: parsed.name, phone: '' };
-                localStorage.setItem('user', JSON.stringify(migrated));
+                restored = { email: parsed.email, name: parsed.name, phone: '' };
+                localStorage.setItem('user', JSON.stringify(restored));
                 localStorage.removeItem('googleAuthUser');
-                return migrated;
             } catch { /* ignore */ }
         }
 
-        const stored = localStorage.getItem('user');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                if (!parsed.email) {
-                    localStorage.removeItem('user');
-                    return null;
-                }
-                // Restore ONLY safe display fields — never idToken/isAdmin
-                return { email: parsed.email, name: parsed.name || '', phone: parsed.phone || '' };
-            } catch { /* ignore */ }
+        if (!restored) {
+            const stored = localStorage.getItem('user');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (!parsed.email) {
+                        localStorage.removeItem('user');
+                    } else {
+                        // Restore ONLY safe display fields — never idToken/isAdmin
+                        restored = { email: parsed.email, name: parsed.name || '', phone: parsed.phone || '' };
+                    }
+                } catch { /* ignore */ }
+            }
         }
-        return null;
+
+        // Layer in a still-valid cached session, if any, so idToken/isAdmin
+        // are available immediately on this render instead of waiting on a
+        // One-Tap round trip.
+        const session = restoreSession();
+        if (session) {
+            restored = { ...(restored || {}), ...session };
+        }
+
+        return restored;
     });
 
     useEffect(() => {
@@ -53,6 +84,26 @@ export const UserProvider = ({ children }) => {
         }
     }, [user]);
 
+    // Mirror idToken/isAdmin into sessionStorage so they survive reloads
+    // within this tab — cleared the moment the token's own expiry passes or
+    // the user logs out.
+    useEffect(() => {
+        if (!user?.idToken) {
+            sessionStorage.removeItem(SESSION_KEY);
+            return;
+        }
+        try {
+            const { exp } = jwtDecode(user.idToken);
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                idToken: user.idToken,
+                isAdmin: !!user.isAdmin,
+                exp,
+            }));
+        } catch {
+            sessionStorage.removeItem(SESSION_KEY);
+        }
+    }, [user?.idToken, user?.isAdmin]);
+
     // Merge updates so callers can do setUser({ phone: '...' }) without losing other fields
     const setUser = (value) => {
         setUserState(prev => {
@@ -62,7 +113,10 @@ export const UserProvider = ({ children }) => {
         });
     };
 
-    const logout = () => setUserState(null);
+    const logout = () => {
+        sessionStorage.removeItem(SESSION_KEY);
+        setUserState(null);
+    };
 
     return (
         <UserContext.Provider value={{ user, setUser, logout }}>

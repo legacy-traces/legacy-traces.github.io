@@ -18,7 +18,20 @@ const post = async (type, body) => {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(body),
     });
-    return res.json();
+    let data;
+    try {
+        data = await res.json();
+    } catch {
+        throw new Error(`Invalid JSON response from "${type}" (status ${res.status})`);
+    }
+    // Backend already returns a parseable { error: "..." } body on failures —
+    // let that pass through so existing callers keep showing the specific
+    // message. Only throw for failures with no usable error payload at all
+    // (e.g. a gateway error page that still happened to be valid JSON).
+    if (!res.ok && data?.error === undefined) {
+        throw new Error(`Request "${type}" failed with status ${res.status}`);
+    }
+    return data;
 };
 
 // ── Catalog (GET — public, no auth) ──────────────────────────────────────────
@@ -220,4 +233,16 @@ export const initCustomOrderPayment = ({ idToken, customOrderId, name, mobile, a
 // (the full quoted price) is collected on delivery — mirrors initCodPayment.
 export const initCustomOrderCodPayment = ({ idToken, customOrderId, name, mobile, address, pincode }) =>
     post('initCustomOrderCodPayment', { idToken, customOrderId, name, mobile, address, pincode });
+
+// ── Contact ("Get in Touch" form — public, no auth) ────────────────────────────
+
+export const submitContactMessage = ({ name, email, subject, message }) =>
+    post('contactMessage', { name, email, subject, message });
+
+// Admin only — backend verifies idToken then checks against ADMIN_SUB secret.
+export const fetchAdminContactMessages = async (idToken) => {
+    if (!idToken) return [];
+    const data = await post('adminContactMessages', { idToken });
+    return data.messages || [];
+};
 

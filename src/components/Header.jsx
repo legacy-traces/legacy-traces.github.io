@@ -83,7 +83,7 @@ const Header = () => {
                                         transition={{ type: 'spring', stiffness: 500, damping: 15 }}
                                         className="absolute top-0 right-0 bg-primary text-black text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center"
                                     >
-                                        {getCartCount()}
+                                        {getCartCount() > 9 ? '9+' : getCartCount()}
                                     </motion.span>
                                 )}
                             </AnimatePresence>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Mail, Phone, MapPin, Send, Instagram, Facebook, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../components/SEO';
+import { submitContactMessage } from '../api/api';
 
 const Contact = () => {
     const form = useRef();
@@ -12,7 +13,7 @@ const Contact = () => {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setStatus({ type: '', message: '' });
 
@@ -35,17 +36,16 @@ const Contact = () => {
         setIsSending(true);
 
         try {
-            const recipient = 'legacytraces24@gmail.com';
-            const body = `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`;
-            const mailtoUrl = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-            window.location.href = mailtoUrl;
-
-            setStatus({ type: 'success', message: 'Opening your email client...' });
-            form.current.reset();
+            const res = await submitContactMessage({ name, email, subject, message });
+            if (res?.error) {
+                setStatus({ type: 'error', message: res.error });
+            } else {
+                setStatus({ type: 'success', message: "Message sent! We'll get back to you soon." });
+                form.current.reset();
+            }
         } catch (error) {
-            console.error('Mailto Error:', error);
-            setStatus({ type: 'error', message: 'Failed to open email client. Please try again or email us directly at legacytraces24@gmail.com' });
+            console.error('Contact submit error:', error);
+            setStatus({ type: 'error', message: 'Failed to send your message. Please try again or email us directly at legacytraces24@gmail.com' });
         } finally {
             setIsSending(false);
         }

@@ -95,18 +95,15 @@ const AdminDashboard = () => {
         }
     }, [user, navigate]);
 
-    // Still waiting for One-Tap to restore idToken + isAdmin
-    if (user?.email && !user?.idToken) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    if (!user?.isAdmin) return <Navigate to="/" />;
-
     // ── Data loading ──────────────────────────────────────────────────────────
+    // These effects (and every hook above) must run unconditionally on every
+    // render — the "waiting for session restore" / "not admin" checks used to
+    // sit between hook declarations as early `return`s, so on first render
+    // after a browser refresh (idToken not yet restored) React skipped these
+    // two effects entirely, then called them on the next render once idToken
+    // arrived — a change in the number of Hooks called between renders, which
+    // React errors on and which left the Orders page blank. Conditional
+    // returns now happen only after every hook has been declared, below.
 
     useEffect(() => {
         const load = async () => {
@@ -127,7 +124,9 @@ const AdminDashboard = () => {
                     };
                 });
                 setOrderEditState(init);
-            } catch {}
+            } catch (err) {
+                console.error('Failed to load admin orders:', err);
+            }
             setLoading(false);
         };
         load();
@@ -149,11 +148,26 @@ const AdminDashboard = () => {
                     };
                 });
                 setEditState(init);
-            } catch {}
+            } catch (err) {
+                console.error('Failed to load custom orders:', err);
+            }
             setLoadingCustom(false);
         };
         load();
     }, [activeTab, user?.idToken]);
+
+    // ── Auth guard renders — now safely after every hook above has run ────────
+
+    // Still waiting for One-Tap to restore idToken + isAdmin
+    if (user?.email && !user?.idToken) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!user?.isAdmin) return <Navigate to="/" />;
 
     // ── Regular orders ────────────────────────────────────────────────────────
 
@@ -203,19 +217,35 @@ const AdminDashboard = () => {
             if (res?.error) {
                 alert(res.error);
             } else {
+                // Sync from the row the backend actually wrote (includes any
+                // auto-filled shipped_at/delivered_at) instead of re-deriving it
+                // client-side, so state never drifts from D1.
+                const fresh = res?.order;
                 setOrders(prev => prev.map(o => o.id === orderId
                     ? {
                         ...o,
-                        OrderStatus:     e.status,
-                        TrackingId:      e.trackingId,
-                        ShippingCompany: e.shippingCompany,
-                        ShippedAt:       toTs(e.shippedAt)   || o.ShippedAt,
-                        DeliveryEta:     toTs(e.deliveryEta) || o.DeliveryEta,
-                        DeliveredAt:     toTs(e.deliveredAt) || o.DeliveredAt,
+                        OrderStatus:     fresh?.OrderStatus     ?? e.status,
+                        TrackingId:      fresh?.TrackingId      ?? e.trackingId,
+                        ShippingCompany: fresh?.ShippingCompany ?? e.shippingCompany,
+                        ShippedAt:       fresh?.ShippedAt       ?? o.ShippedAt,
+                        DeliveryEta:     fresh?.DeliveryEta     ?? o.DeliveryEta,
+                        DeliveredAt:     fresh?.DeliveredAt     ?? o.DeliveredAt,
                     }
                     : o));
+
+                // notificationSent is null when this update didn't cross into
+                // Shipped/Delivered (no notification applicable); true/false
+                // otherwise. Surface a delivery failure instead of pretending
+                // the customer was notified.
+                if (res?.notificationSent === false) {
+                    console.error(`Order ${orderId} updated, but the customer notification failed to send.`);
+                    alert('Order updated, but the customer notification failed to send.');
+                } else {
+                    alert('Order updated successfully.');
+                }
             }
-        } catch {
+        } catch (err) {
+            console.error('Failed to update order:', err);
             alert('Failed to update order.');
         }
         setSavingOrderId(null);
