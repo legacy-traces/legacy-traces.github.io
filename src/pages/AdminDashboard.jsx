@@ -381,6 +381,34 @@ const AdminDashboard = () => {
                         ? { ...o, quoted_price: priceNum, status: e.status }
                         : o)
                 );
+
+                // Setting this status to Shipped/Delivered mirrors the same
+                // transition into the linked regular order (backend.js,
+                // updateCustomQuote) — sync its auto-filled shipped/delivered
+                // dates into the Shipping sub-section below so it doesn't keep
+                // showing stale values until a full page reload.
+                const confirmedOrderId = customOrders.find(o => o.id === id)?.confirmed_order_id;
+                const fresh = res.shippingOrder;
+                if (confirmedOrderId && fresh) {
+                    setOrders(prev => prev.map(o => o.id === confirmedOrderId
+                        ? { ...o, OrderStatus: fresh.OrderStatus, ShippedAt: fresh.ShippedAt, DeliveredAt: fresh.DeliveredAt }
+                        : o));
+                    setOrderEditState(prev => ({
+                        ...prev,
+                        [confirmedOrderId]: {
+                            ...prev[confirmedOrderId],
+                            status:      fresh.OrderStatus,
+                            shippedAt:   fresh.ShippedAt   ? toDateInputValue(fresh.ShippedAt)   : prev[confirmedOrderId]?.shippedAt,
+                            deliveredAt: fresh.DeliveredAt ? toDateInputValue(fresh.DeliveredAt) : prev[confirmedOrderId]?.deliveredAt,
+                        },
+                    }));
+                }
+
+                if (res.notificationSent === false) {
+                    alert('Custom order updated, but the customer notification failed to send.');
+                } else if (confirmedOrderId && (e.status === 'Shipped' || e.status === 'Delivered')) {
+                    alert('Custom order updated successfully.');
+                }
             } else {
                 alert(res.error || 'Update failed.');
             }

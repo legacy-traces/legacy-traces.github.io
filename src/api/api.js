@@ -110,10 +110,6 @@ export const postComment = async (commentData) => {
     });
 };
 
-// Increment like or dislike on a comment. idToken required.
-export const interactComment = async (idToken, commentId, action) =>
-    post('interact', { idToken, commentId, action });
-
 export const postRating = async ({ idToken, productId, rating }) =>
     post('rating', { idToken, productId, rating });
 

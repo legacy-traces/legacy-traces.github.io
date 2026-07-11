@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { fetchProductFeedback, fetchProductRating, postComment, postRating, interactComment } from '../api/api';
+import { fetchProductFeedback, fetchProductRating, postComment, postRating } from '../api/api';
 import { useUser } from '../context/UserContext';
-import { Star, ThumbsUp, ThumbsDown, Reply, MessageSquare, Send } from 'lucide-react';
+import { Star, Reply, MessageSquare, Send } from 'lucide-react';
 
 // Masks email addresses for public display.
 // If it looks like an email, shows only the part before @, with
@@ -116,14 +116,6 @@ const FeedbackSection = ({ productId }) => {
         finally { setIsPosting(false); }
     };
 
-    const handleInteract = async (commentId, action) => {
-        if (!user?.idToken) return; // must be authenticated to like/dislike
-        try {
-            await interactComment(user.idToken, commentId, action);
-            loadFeedbackAndRating();
-        } catch { /* silent */ }
-    };
-
     // Organize feedback into threads.
     // Cast both sides to Number — D1 returns integers, but JSON parsing can
     // occasionally produce strings depending on the serialization path.
@@ -223,13 +215,7 @@ const FeedbackSection = ({ productId }) => {
                             <p className="text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-wrap">{comment.Comments}</p>
                             
                             <div className="flex items-center gap-4 text-sm font-medium text-gray-500">
-                                <button onClick={() => handleInteract(comment.CommentID, 'like')} className="flex items-center gap-1 hover:text-primary transition-colors">
-                                    <ThumbsUp size={16} /> {comment.Like || 0}
-                                </button>
-                                <button onClick={() => handleInteract(comment.CommentID, 'dislike')} className="flex items-center gap-1 hover:text-red-500 transition-colors">
-                                    <ThumbsDown size={16} /> {comment.Dislike || 0}
-                                </button>
-                                <button onClick={() => setReplyTo(replyTo === comment.CommentID ? null : comment.CommentID)} className="flex items-center gap-1 hover:text-black dark:hover:text-white transition-colors ml-4">
+                                <button onClick={() => setReplyTo(replyTo === comment.CommentID ? null : comment.CommentID)} className="flex items-center gap-1 hover:text-black dark:hover:text-white transition-colors">
                                     <Reply size={16} /> Reply
                                 </button>
                             </div>
@@ -272,15 +258,7 @@ const FeedbackSection = ({ productId }) => {
                                                     <span className="text-xs text-gray-400 ml-2">{reply.Timestamp}</span>
                                                 </div>
                                             </div>
-                                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">{reply.Comments}</p>
-                                            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
-                                                <button onClick={() => handleInteract(reply.CommentID, 'like')} className="flex items-center gap-1 hover:text-primary transition-colors">
-                                                    <ThumbsUp size={14} /> {reply.Like || 0}
-                                                </button>
-                                                <button onClick={() => handleInteract(reply.CommentID, 'dislike')} className="flex items-center gap-1 hover:text-red-500 transition-colors">
-                                                    <ThumbsDown size={14} /> {reply.Dislike || 0}
-                                                </button>
-                                            </div>
+                                            <p className="text-gray-700 dark:text-gray-300 text-sm">{reply.Comments}</p>
                                         </div>
                                     ))}
                                 </div>
