@@ -133,32 +133,34 @@ const Checkout = () => {
 
     // ── Delivery calculation ──────────────────────────────────────────────────
 
+    // Delivery charge by pincode prefix (mirrors the backend calcDelivery exactly):
+    //   • starts 67/68/69, or any 5x → ₹50
+    //   • starts 1 or 4              → ₹100
+    //   • everything else            → free (₹0)
     const getDeliveryDetails = (pincode) => {
         if (!pincode) return { charge: 0, message: '', error: null };
         if (!/^\d{6}$/.test(pincode))
             return { error: 'Enter a valid 6-digit pincode', charge: 0, message: '' };
-        const prefix = pincode.substring(0, 2);
-        if (['60','61','62','63','64'].includes(prefix))
-            return { charge: 0, message: 'Free Delivery available 🎉', isCod: true };
-        if (['50','51','52','53','54','55','56','57','58','59',
-             '66','67','68','69'].includes(prefix))
-            return { charge: 50, message: '₹50 delivery charges applied 🚚', isCod: false };
-        return {
-            charge: 0,
-            message: 'Additional courier charges may apply. Our agent will confirm the details.',
-            isCod: false,
-        };
+        const p2 = pincode.substring(0, 2);
+        const p1 = pincode.charAt(0);
+        // COD (Tamil Nadu local zone) availability is unchanged: 60–64.
+        const isCod = ['60', '61', '62', '63', '64'].includes(p2);
+        let charge = 0;
+        if (['67', '68', '69'].includes(p2) || p1 === '5') charge = 50;
+        else if (p1 === '1' || p1 === '4') charge = 100;
+        if (charge > 0)
+            return { charge, message: `₹${charge} delivery charges applied 🚚`, isCod };
+        return { charge: 0, message: 'Free Delivery available 🎉', isCod };
     };
 
-    // Custom orders: the admin's quote already includes delivery and has no
-    // coupon support, so no delivery-charge messaging is shown — but COD
-    // availability follows the exact same pincode-zone rule as regular orders
-    // (same courier network), so custom orders get a real online-or-COD choice.
+    // Custom orders now also carry pincode-based delivery on top of the admin's
+    // quote (billed the same way as regular orders); COD availability follows the
+    // same pincode-zone rule, so custom orders keep a real online-or-COD choice.
     const rawDeliveryDetails = getDeliveryDetails(formData.pincode);
     const isPincodeValid   = !rawDeliveryDetails.error && /^\d{6}$/.test(formData.pincode);
-    const deliveryDetails  = isCustomMode ? { charge: 0, message: '', error: rawDeliveryDetails.error } : rawDeliveryDetails;
-    const deliveryCharge   = isCustomMode ? 0 : (isPincodeValid ? deliveryDetails.charge : 0);
-    const isFreeDelivery   = !isCustomMode && isPincodeValid && deliveryCharge === 0 && deliveryDetails.message?.includes('Free');
+    const deliveryDetails  = rawDeliveryDetails;
+    const deliveryCharge   = isPincodeValid ? deliveryDetails.charge : 0;
+    const isFreeDelivery   = isPincodeValid && deliveryCharge === 0 && deliveryDetails.message?.includes('Free');
     const isCodAvailable   = isPincodeValid && rawDeliveryDetails.isCod;
     const subtotal         = isCustomMode ? (customOrder?.quoted_price || 0) : getCartTotal();
     // Server is the source of truth for the discount amount (it applies the Max_Discount
@@ -955,14 +957,12 @@ const Checkout = () => {
                                         <span>Subtotal</span>
                                         <span className="font-bold text-black dark:text-white">₹{subtotal}</span>
                                     </div>
-                                    {!isCustomMode && (
                                     <div className="flex justify-between items-center text-gray-600 dark:text-gray-400">
                                         <span>Delivery Charge {isFreeDelivery ? '🎉' : (deliveryCharge > 0 ? '🚚' : '')}</span>
                                         <span className={`font-bold ${isFreeDelivery ? 'text-green-500' : 'text-black dark:text-white'}`}>
                                             {isFreeDelivery ? 'Free' : (deliveryCharge > 0 ? `₹${deliveryCharge}` : 'TBD')}
                                         </span>
                                     </div>
-                                    )}
 
                                     {appliedCoupon && (
                                         <div className="flex justify-between items-center text-green-600 dark:text-green-400">
