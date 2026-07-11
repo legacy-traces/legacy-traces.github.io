@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useTheme } from '../context/ThemeContext';
 import { fabric } from 'fabric';
 import { submitCustomOrder } from '../api/api';
 import SEO from '../components/SEO';
@@ -32,7 +33,7 @@ import Fade from '@mui/material/Fade';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
-import customizeTheme from './customizeTheme';
+import makeCustomizeTheme from './customizeTheme';
 
 const TOOL_TABS = ['shirt', 'text', 'image'];
 
@@ -120,6 +121,8 @@ async function compressDataUrl(dataUrl, maxPx = 500, quality = 0.75) {
 export default function Customize() {
     const navigate  = useNavigate();
     const { user }  = useUser();
+    const { theme: appTheme } = useTheme();
+    const muiTheme = useMemo(() => makeCustomizeTheme(appTheme === 'dark' ? 'dark' : 'light'), [appTheme]);
 
     // ── Views ─────────────────────────────────────────────────────────────────
     const [view, setView] = useState('select'); // 'select' | 'editor' | 'success'
@@ -139,6 +142,14 @@ export default function Customize() {
 
     // ── Selection state ───────────────────────────────────────────────────────
     const [activeObj, setActiveObj] = useState(null);
+
+    // Exact on-screen pixel size of the shirt+canvas box, recomputed in
+    // resizeCanvas to be the largest size that both fits the available space
+    // and keeps the true 500:600 aspect ratio — the shirt image and canvas
+    // overlay both render at exactly this size, so they always stay pixel
+    // aligned (nothing here relies on CSS aspect-ratio auto-sizing, which has
+    // edge cases when width and height are constrained independently).
+    const [displaySize, setDisplaySize] = useState({ w: CANVAS_W, h: CANVAS_H });
 
     // ── Tool tabs ─────────────────────────────────────────────────────────────
     const [toolTab, setToolTab] = useState('shirt'); // 'shirt' | 'text' | 'image'
@@ -216,16 +227,25 @@ export default function Customize() {
     }, [view]);
 
     // ── Resize handler ────────────────────────────────────────────────────────
+    // containerRef is the "available space" box (flexes to fill whatever room
+    // is left after the header/tool panel/controls/button take theirs, capped
+    // by a max-height in the JSX) — this fits the canvas to the largest size
+    // that satisfies BOTH that width and that height, never the page scrolling
+    // to reveal a bigger canvas.
     const resizeCanvas = useCallback((fc) => {
         const el = containerRef.current;
         if (!fc || !el) return;
         const w = el.clientWidth;
-        if (!w) return;
-        const scale = Math.min(w / CANVAS_W, 1);
+        const h = el.clientHeight;
+        if (!w || !h) return;
+        const scale = Math.min(w / CANVAS_W, h / CANVAS_H, 1);
+        const dispW = Math.round(CANVAS_W * scale);
+        const dispH = Math.round(CANVAS_H * scale);
         fc.setZoom(scale);
-        fc.setWidth(Math.round(CANVAS_W * scale));
-        fc.setHeight(Math.round(CANVAS_H * scale));
+        fc.setWidth(dispW);
+        fc.setHeight(dispH);
         fc.renderAll();
+        setDisplaySize({ w: dispW, h: dispH });
     }, []);
 
     useEffect(() => {
@@ -503,7 +523,7 @@ export default function Customize() {
     const renderShirtPanel = () => (
         <>
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Color</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Color</Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {COLOR_SWATCHES.map(c => (
                         <Box
@@ -514,7 +534,7 @@ export default function Customize() {
                             sx={{
                                 width: 32, height: 32, borderRadius: '50%', cursor: 'pointer',
                                 bgcolor: c.hex, border: '2px solid',
-                                borderColor: color === c.id ? 'primary.main' : 'grey.300',
+                                borderColor: color === c.id ? 'primary.main' : 'divider',
                                 transform: color === c.id ? 'scale(1.12)' : 'none',
                                 boxShadow: color === c.id ? '0 0 0 3px rgba(0,230,118,0.25)' : 'none',
                                 transition: 'all .15s',
@@ -525,23 +545,23 @@ export default function Customize() {
             </Box>
 
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Quantity per Size</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Quantity per Size</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {SIZES.map(sz => (
                         <Box key={sz} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography sx={{ width: 32, fontFamily: 'monospace', fontSize: 14, color: 'grey.700' }}>{sz}</Typography>
-                            <IconButton size="small" onClick={() => setSizes(p => ({ ...p, [sz]: Math.max(0, p[sz] - 1) }))} sx={{ bgcolor: 'grey.100', borderRadius: 2, '&:hover': { bgcolor: 'grey.200' } }}>
+                            <Typography sx={{ width: 32, fontFamily: 'monospace', fontSize: 14, color: 'text.primary' }}>{sz}</Typography>
+                            <IconButton size="small" onClick={() => setSizes(p => ({ ...p, [sz]: Math.max(0, p[sz] - 1) }))} sx={{ bgcolor: 'action.hover', borderRadius: 2, '&:hover': { bgcolor: 'action.selected' } }}>
                                 <Minus size={11} />
                             </IconButton>
                             <Typography sx={{ width: 24, textAlign: 'center', fontFamily: 'monospace', fontSize: 14 }}>{sizes[sz]}</Typography>
-                            <IconButton size="small" onClick={() => setSizes(p => ({ ...p, [sz]: p[sz] + 1 }))} sx={{ bgcolor: 'grey.100', borderRadius: 2, '&:hover': { bgcolor: 'grey.200' } }}>
+                            <IconButton size="small" onClick={() => setSizes(p => ({ ...p, [sz]: p[sz] + 1 }))} sx={{ bgcolor: 'action.hover', borderRadius: 2, '&:hover': { bgcolor: 'action.selected' } }}>
                                 <Plus size={11} />
                             </IconButton>
                         </Box>
                     ))}
                 </Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', mt: 1, display: 'block' }}>
-                    Total: <Box component="span" sx={{ color: 'grey.700', fontFamily: 'monospace' }}>{totalPcs}</Box> pcs
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                    Total: <Box component="span" sx={{ color: 'text.primary', fontFamily: 'monospace' }}>{totalPcs}</Box> pcs
                 </Typography>
             </Box>
 
@@ -561,7 +581,7 @@ export default function Customize() {
     const renderTextPanel = () => (
         <>
             {/* ── Add text input ── */}
-            <Paper variant="outlined" sx={{ p: 1.5, borderColor: 'grey.200', bgcolor: '#ffffff' }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderColor: 'divider', bgcolor: 'background.paper' }}>
                 <Typography variant="body2" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
                     <Type size={14} color="#00e676" /> Add Text to Design
                 </Typography>
@@ -583,14 +603,14 @@ export default function Customize() {
                 >
                     Add Text to Canvas
                 </Button>
-                <Typography variant="caption" sx={{ color: 'grey.500', display: 'block', textAlign: 'center', mt: 1 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', textAlign: 'center', mt: 1 }}>
                     Tip: Double-click text on canvas to edit it directly
                 </Typography>
             </Paper>
 
             {/* ── Font ── */}
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Font</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Font</Typography>
                 <Select value={fontFamily} onChange={e => setFontFamily(e.target.value)} fullWidth size="small">
                     {FONTS.map(f => <MenuItem key={f} value={f} sx={{ fontFamily: f }}>{f}</MenuItem>)}
                 </Select>
@@ -598,11 +618,11 @@ export default function Customize() {
 
             {/* ── Size ── */}
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>
-                    Size — <Box component="span" sx={{ color: 'grey.900', fontFamily: 'monospace' }}>{fontSize}px</Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>
+                    Size — <Box component="span" sx={{ color: 'text.primary', fontFamily: 'monospace' }}>{fontSize}px</Box>
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <IconButton size="small" onClick={() => setFontSize(s => Math.max(10, s - 2))} sx={{ bgcolor: 'grey.100' }}><Minus size={12} /></IconButton>
+                    <IconButton size="small" onClick={() => setFontSize(s => Math.max(10, s - 2))} sx={{ bgcolor: 'action.hover' }}><Minus size={12} /></IconButton>
                     <Slider
                         value={fontSize}
                         min={10}
@@ -611,13 +631,13 @@ export default function Customize() {
                         size="small"
                         sx={{ flex: 1 }}
                     />
-                    <IconButton size="small" onClick={() => setFontSize(s => Math.min(200, s + 2))} sx={{ bgcolor: 'grey.100' }}><Plus size={12} /></IconButton>
+                    <IconButton size="small" onClick={() => setFontSize(s => Math.min(200, s + 2))} sx={{ bgcolor: 'action.hover' }}><Plus size={12} /></IconButton>
                 </Box>
             </Box>
 
             {/* ── Style ── */}
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Style</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Style</Typography>
                 <ToggleButtonGroup fullWidth size="small" sx={{ '& .MuiToggleButton-root': { flex: 1 } }}>
                     <ToggleButton value="bold" selected={isBold} onChange={() => setIsBold(b => !b)}>
                         <Bold size={15} />
@@ -633,8 +653,8 @@ export default function Customize() {
 
             {/* ── Color ── */}
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Text Color</Typography>
-                <Paper variant="outlined" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1, borderColor: 'grey.200', bgcolor: '#ffffff' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Text Color</Typography>
+                <Paper variant="outlined" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
                     <Box
                         component="input"
                         type="color"
@@ -651,22 +671,22 @@ export default function Customize() {
     const renderImagePanel = () => (
         <>
             <Box>
-                <Typography variant="caption" sx={{ color: 'grey.500', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Upload Image</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', mb: 1, display: 'block' }}>Upload Image</Typography>
                 <Button
                     component="label"
                     fullWidth
                     sx={{
-                        flexDirection: 'column', gap: 1, py: 3, bgcolor: 'grey.100',
-                        border: '1px dashed', borderColor: 'grey.300', color: 'grey.600',
-                        '&:hover': { bgcolor: 'grey.200', borderColor: 'primary.main' },
+                        flexDirection: 'column', gap: 1, py: 3, bgcolor: 'action.hover',
+                        border: '1px dashed', borderColor: 'divider', color: 'text.secondary',
+                        '&:hover': { bgcolor: 'action.selected', borderColor: 'primary.main' },
                     }}
                 >
                     <Upload size={20} color="#00e676" />
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>Choose file</Typography>
-                    <Typography variant="caption" sx={{ color: 'grey.500' }}>PNG, JPG, SVG</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>PNG, JPG, SVG</Typography>
                     <input type="file" accept="image/*" hidden onChange={handleImageUpload} />
                 </Button>
-                <Typography variant="caption" sx={{ color: 'grey.500', mt: 1, display: 'block' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
                     Tip: Use PNG with transparent background for best results
                 </Typography>
             </Box>
@@ -678,8 +698,8 @@ export default function Customize() {
     // ─────────────────────────────────────────────────────────────────────────
     if (view === 'select') {
         return (
-            <ThemeProvider theme={customizeTheme}>
-            <div className="min-h-[60vh] bg-gray-50 text-gray-900 flex flex-col items-center justify-center px-4 py-8">
+            <ThemeProvider theme={muiTheme}>
+            <div className="min-h-[60vh] bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 py-8">
             <SEO
                 title="Design Custom T-Shirts &amp; Hoodies Online – Free Quote"
                 description="Create your own custom t-shirt or hoodie with our online design tool. Add text, logos &amp; images. Place print on front &amp; back. Get a free price quote. Perfect for teams, events &amp; gifts. Ships across India."
@@ -709,7 +729,7 @@ export default function Customize() {
             />
                 <div className="w-full max-w-lg">
                     <h1 className="text-3xl font-bold text-center mb-2">Design Your Own</h1>
-                    <p className="text-gray-500 text-center text-sm mb-10">
+                    <p className="text-gray-500 dark:text-gray-400 text-center text-sm mb-10">
                         Place your text & images on a shirt, then get a custom quote from us.
                     </p>
 
@@ -718,17 +738,17 @@ export default function Customize() {
                             { id: 'tshirt', icon: '👕', label: 'T-Shirt', sub: 'Oversized Fit' },
                             { id: 'hoodie', icon: '🧥', label: 'Hoodie',  sub: 'Pullover style' },
                         ].map(p => (
-                            <Card key={p.id} variant="outlined" sx={{ bgcolor: '#ffffff', borderColor: 'grey.200', borderRadius: 4 }}>
+                            <Card key={p.id} variant="outlined" sx={{ bgcolor: 'background.paper', borderColor: 'divider', borderRadius: 4 }}>
                                 <CardActionArea
                                     onClick={() => { setProduct(p.id); setView('editor'); setIsBack(false); frontJsonRef.current = null; backJsonRef.current = null; }}
                                     sx={{
                                         display: 'flex', flexDirection: 'column', gap: 1.5, py: 4, px: 2,
-                                        '&:hover': { bgcolor: 'grey.100' },
+                                        '&:hover': { bgcolor: 'action.hover' },
                                     }}
                                 >
                                     <Typography sx={{ fontSize: 40 }}>{p.icon}</Typography>
                                     <Typography sx={{ fontWeight: 700, fontSize: 18 }}>{p.label}</Typography>
-                                    <Typography variant="caption" sx={{ color: 'grey.500' }}>{p.sub}</Typography>
+                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{p.sub}</Typography>
                                 </CardActionArea>
                             </Card>
                         ))}
@@ -744,15 +764,15 @@ export default function Customize() {
     // ─────────────────────────────────────────────────────────────────────────
     if (view === 'success') {
         return (
-            <ThemeProvider theme={customizeTheme}>
-            <div className="min-h-[60vh] bg-gray-50 flex items-center justify-center p-4">
-                <Paper variant="outlined" sx={{ maxWidth: 384, width: '100%', p: 4, textAlign: 'center', borderColor: 'grey.200', bgcolor: '#ffffff' }}>
+            <ThemeProvider theme={muiTheme}>
+            <div className="min-h-[60vh] bg-gray-50 dark:bg-[#121212] flex items-center justify-center p-4">
+                <Paper variant="outlined" sx={{ maxWidth: 384, width: '100%', p: 4, textAlign: 'center', borderColor: 'divider', bgcolor: 'background.paper' }}>
                     <Box sx={{ width: 56, height: 56, bgcolor: 'rgba(0,230,118,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
                         <CheckCircle size={28} color="#00e676" />
                     </Box>
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Quote Submitted!</Typography>
-                    {submittedId && <Typography variant="caption" sx={{ color: 'grey.500', display: 'block', mb: 1 }}>Order #{submittedId}</Typography>}
-                    <Typography variant="body2" sx={{ color: 'grey.600', mb: 3 }}>
+                    {submittedId && <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>Order #{submittedId}</Typography>}
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
                         Our team will review your design and reply with a price via WhatsApp soon.
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -784,13 +804,13 @@ export default function Customize() {
     // EDITOR VIEW
     // ─────────────────────────────────────────────────────────────────────────
     return (
-        <ThemeProvider theme={customizeTheme}>
-        <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col" style={{ height: '100dvh' }}>
+        <ThemeProvider theme={muiTheme}>
+        <div className="bg-gray-50 dark:bg-[#121212] text-gray-900 dark:text-white flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
 
             {/* Top bar */}
-            <AppBar position="static" elevation={0} sx={{ bgcolor: '#ffffff', borderBottom: '1px solid', borderColor: 'grey.200' }}>
+            <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Toolbar variant="dense" sx={{ gap: 1.5 }}>
-                    <IconButton edge="start" onClick={() => setView('select')} sx={{ color: 'grey.800' }}>
+                    <IconButton edge="start" onClick={() => setView('select')} sx={{ color: 'text.primary' }}>
                         <ArrowLeft size={18} />
                     </IconButton>
                     <ToggleButtonGroup
@@ -806,25 +826,43 @@ export default function Customize() {
                 </Toolbar>
             </AppBar>
 
-            {/* Body — canvas FIRST on mobile, tools below; row on desktop with tools left */}
-            <div className="flex flex-col-reverse lg:flex-row flex-1 min-h-0">
+            {/* Body — canvas FIRST on mobile, tools below; row on desktop with tools left.
+                overflow-hidden here + min-h-0 throughout is what keeps the whole editor
+                fixed to the viewport — nothing on this page scrolls except the tool
+                panel's own tab content (an intentional, contained inline scroll). */}
+            <div className="flex flex-col-reverse lg:flex-row flex-1 min-h-0 overflow-hidden">
 
                 {/* ── Left panel (desktop) / Bottom panel (mobile) ─────────────── */}
-                <Paper square elevation={0} sx={{ width: { xs: '100%', lg: 288 }, flexShrink: 0, display: 'flex', flexDirection: 'column', borderTop: { xs: '1px solid', lg: 'none' }, borderRight: { lg: '1px solid' }, borderColor: 'grey.200', bgcolor: 'grey.50' }}>
+                <Paper
+                    square
+                    elevation={0}
+                    sx={{
+                        width: { xs: '100%', lg: 288 },
+                        // Docked-panel behavior on mobile (like a pro editor's tool
+                        // drawer): the panel caps at ~40% of the screen and scrolls
+                        // internally, so the canvas always keeps the majority of
+                        // the viewport instead of being squeezed by tall tab content.
+                        maxHeight: { xs: '40dvh', lg: 'none' },
+                        flexShrink: 0, display: 'flex', flexDirection: 'column',
+                        borderTop: { xs: '1px solid', lg: 'none' },
+                        borderRight: { lg: '1px solid' },
+                        borderColor: 'divider', bgcolor: 'background.default',
+                    }}
+                >
                     {/* Tab row */}
                     <Tabs
                         value={toolTab}
                         onChange={(e, v) => { setToolTab(v); toolSwiperRef.current?.slideTo(TOOL_TABS.indexOf(v)); }}
                         variant="fullWidth"
-                        sx={{ borderBottom: '1px solid', borderColor: 'grey.200', minHeight: 0 }}
+                        sx={{ borderBottom: '1px solid', borderColor: 'divider', minHeight: 0, flexShrink: 0 }}
                     >
                         <Tab value="shirt" icon={<Shirt size={15}/>} label="Shirt" iconPosition="top" />
                         <Tab value="text"  icon={<Type  size={15}/>} label="Text"  iconPosition="top" />
                         <Tab value="image" icon={<ImageIcon size={15}/>} label="Image" iconPosition="top" />
                     </Tabs>
 
-                    {/* Panel — swipeable on mobile, scrollable on desktop */}
-                    <div className="lg:flex-1 lg:overflow-y-auto">
+                    {/* Panel — swipeable between tabs, scrollable within a tab */}
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                         <Swiper
                             onSwiper={s => (toolSwiperRef.current = s)}
                             initialSlide={TOOL_TABS.indexOf(toolTab)}
@@ -840,40 +878,49 @@ export default function Customize() {
                 </Paper>
 
                 {/* ── Canvas area ───────────────────────────────────────────── */}
-                <div className="flex-1 flex flex-col items-center justify-start p-3 gap-3 overflow-y-auto bg-gray-100">
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 p-3 overflow-hidden bg-gray-100 dark:bg-[#1a1a1a]">
 
-                    {/* Canvas wrapper: shirt img + fabric canvas stacked */}
-                    <div ref={containerRef} className="relative w-full" style={{ maxWidth: CANVAS_W }}>
-                        {renderFloatingToolbar()}
+                    {/* Available-space box — flexes to fill whatever room is left
+                        above the controls/button, capped so the canvas gets a
+                        real, fixed, presentable size instead of shrinking to fit
+                        whatever's left. resizeCanvas measures this box. */}
+                    <div
+                        ref={containerRef}
+                        className="w-full flex-1 min-h-0 flex items-center justify-center"
+                        style={{ maxHeight: 'clamp(220px, 46dvh, 480px)' }}
+                    >
+                        {/* Shirt img + fabric canvas — sized to the exact pixel
+                            box resizeCanvas computed, so both stay perfectly
+                            aligned no matter how much space is available. */}
+                        <div className="relative shrink-0" style={{ width: displaySize.w, height: displaySize.h }}>
+                            {renderFloatingToolbar()}
 
-                        {/* Shirt photo (visual background) */}
-                        <img
-                            ref={shirtImgRef}
-                            src={shirtSrc}
-                            alt="shirt"
-                            className="absolute inset-0 w-full h-full object-cover rounded-xl pointer-events-none select-none"
-                            style={{ zIndex: 0 }}
-                        />
+                            {/* Shirt photo (visual background) */}
+                            <img
+                                ref={shirtImgRef}
+                                src={shirtSrc}
+                                alt="shirt"
+                                className="absolute inset-0 w-full h-full object-cover rounded-xl pointer-events-none select-none"
+                                style={{ zIndex: 0 }}
+                            />
 
-                        {/* Aspect-ratio spacer */}
-                        <div style={{ paddingBottom: `${(CANVAS_H / CANVAS_W) * 100}%` }} />
+                            {/* Fabric.js canvas overlay */}
+                            <div
+                                className="absolute inset-0 rounded-xl overflow-hidden"
+                                style={{ zIndex: 1, touchAction: 'none' }}
+                            >
+                                <canvas ref={canvasElRef} />
+                            </div>
 
-                        {/* Fabric.js canvas overlay */}
-                        <div
-                            className="absolute inset-0 rounded-xl overflow-hidden"
-                            style={{ zIndex: 1, touchAction: 'none' }}
-                        >
-                            <canvas ref={canvasElRef} />
-                        </div>
-
-                        {/* Side label */}
-                        <div className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5 bg-black/50 rounded-full text-gray-300 pointer-events-none">
-                            {isBack ? 'BACK' : 'FRONT'}
+                            {/* Side label */}
+                            <div className="absolute top-2 left-2 z-10 text-[10px] font-semibold px-2 py-0.5 bg-black/50 rounded-full text-gray-300 pointer-events-none">
+                                {isBack ? 'BACK' : 'FRONT'}
+                            </div>
                         </div>
                     </div>
 
                     {/* Controls row — tap the button or swipe this strip to flip sides */}
-                    <div className="w-full" style={{ maxWidth: CANVAS_W }}>
+                    <div className="w-full shrink-0" style={{ maxWidth: CANVAS_W }}>
                         <Swiper
                             modules={[Pagination]}
                             loop
@@ -891,15 +938,15 @@ export default function Customize() {
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={handleFlip}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gray-200 rounded-full text-xs font-medium hover:bg-gray-300 active:scale-95 transition-all"
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-full text-xs font-medium hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all"
                                         >
                                             <RotateCw size={13} />
                                             {isBack ? 'View Front' : 'View Back'}
                                         </button>
-                                        <span className="text-xs text-gray-600 ml-auto hidden sm:inline">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 ml-auto hidden sm:inline">
                                             Print area shown by dashed outline
                                         </span>
-                                        <span className="text-xs text-gray-600 ml-auto sm:hidden">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 ml-auto sm:hidden">
                                             Swipe to flip sides
                                         </span>
                                     </div>
@@ -910,7 +957,7 @@ export default function Customize() {
 
                     {/* Error */}
                     {formError && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.light', fontSize: 12, bgcolor: 'rgba(127,29,29,0.2)', borderRadius: 3, p: 1.5, width: '100%' }} style={{ maxWidth: CANVAS_W }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'error.main', fontSize: 12, bgcolor: 'rgba(198,40,40,0.1)', borderRadius: 3, p: 1.5, width: '100%', flexShrink: 0 }} style={{ maxWidth: CANVAS_W }}>
                             <AlertCircle size={14} className="shrink-0" />
                             <span>{formError}</span>
                         </Box>
@@ -923,7 +970,7 @@ export default function Customize() {
                         variant="contained"
                         size="large"
                         fullWidth
-                        sx={{ maxWidth: CANVAS_W, borderRadius: 4, py: 1.5 }}
+                        sx={{ maxWidth: CANVAS_W, borderRadius: 4, py: 1.5, flexShrink: 0 }}
                     >
                         {submitting
                             ? 'Submitting…'
