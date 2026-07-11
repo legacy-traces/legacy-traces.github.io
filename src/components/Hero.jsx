@@ -137,9 +137,13 @@ const Hero = () => {
                         const imgUrl = getImageUrl(banner.Image);
                         if (!imgUrl) return null;
 
+                        // show_text defaults to 1 in D1 — only an explicit 0 hides
+                        // the text/button overlay for an image-only banner.
+                        const showText = Number(banner.ShowText ?? 1) !== 0;
+
                         return (
                             <SwiperSlide key={banner.ID || index}>
-                                <div 
+                                <div
                                     onClick={() => navigate(redirectPath)}
                                     className="relative w-full h-full block cursor-pointer group/slide overflow-hidden"
                                 >
@@ -147,32 +151,34 @@ const Hero = () => {
                                     <img
                                         src={imgUrl}
                                         alt={banner.Title || `Banner ${index + 1}`}
-                                        className="w-full h-full object-cover transition-transform duration-[2000ms] ease-out group-hover/slide:scale-105" 
-                                        loading={index === 0 ? "eager" : "lazy"} 
+                                        className="w-full h-full object-cover transition-transform duration-[2000ms] ease-out group-hover/slide:scale-105"
+                                        loading={index === 0 ? "eager" : "lazy"}
                                         fetchpriority={index === 0 ? "high" : "auto"}
                                         onError={(e) => {
                                             e.target.onerror = null;
                                             e.target.src = 'https://placehold.co/1920x500/111/FFF?text=Image+Load+Failed';
                                         }}
                                     />
-                                    
-                                    {/* Premium Gradient Overlay — solid scrim (no blur), strong enough for any image */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6 md:p-12 lg:p-16 pb-8 md:pb-14 pointer-events-none">
-                                        <div className="max-w-3xl transform translate-y-2 group-hover/slide:translate-y-0 transition-transform duration-500 ease-out">
-                                            {/* Text Overlay */}
-                                            <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold mb-3 md:mb-4 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                                                {banner.BannerText1 || "Legacy Traces Collection"}
-                                            </h2>
-                                            <p className="text-sm md:text-lg lg:text-xl mb-6 md:mb-8 text-gray-100 line-clamp-2 md:line-clamp-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
-                                                {banner.BannerText2 || "Premium Tamil streetwear built to last. Wear your culture."}
-                                            </p>
 
-                                            {/* CTA Button */}
-                                            <span className="inline-block bg-primary text-black px-6 md:px-8 py-2 md:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-primary/20 pointer-events-auto hover:brightness-90">
-                                                {banner.ButtonText || "Shop Now"}
-                                            </span>
+                                    {showText && (
+                                        /* Premium Gradient Overlay — solid scrim (no blur), strong enough for any image */
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6 md:p-12 lg:p-16 pb-8 md:pb-14 pointer-events-none">
+                                            <div className="max-w-3xl transform translate-y-2 group-hover/slide:translate-y-0 transition-transform duration-500 ease-out">
+                                                {/* Text Overlay */}
+                                                <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold mb-3 md:mb-4 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                                                    {banner.BannerText1 || "Legacy Traces Collection"}
+                                                </h2>
+                                                <p className="text-sm md:text-lg lg:text-xl mb-6 md:mb-8 text-gray-100 line-clamp-2 md:line-clamp-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+                                                    {banner.BannerText2 || "Premium Tamil streetwear built to last. Wear your culture."}
+                                                </p>
+
+                                                {/* CTA Button */}
+                                                <span className="inline-block bg-primary text-black px-6 md:px-8 py-2 md:py-3 rounded-xl font-bold transition-all duration-300 shadow-lg shadow-primary/20 pointer-events-auto hover:brightness-90">
+                                                    {banner.ButtonText || "Shop Now"}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </SwiperSlide>
                         );
