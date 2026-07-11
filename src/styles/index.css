@@ -18,7 +18,7 @@ html, body {
 }
 
 body {
-    background-color: white;
+    background-color: #dff9fb;
     color: black;
     font-family: var(--font-sans);
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
