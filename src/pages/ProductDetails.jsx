@@ -19,6 +19,10 @@ const ProductDetails = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSize, setSelectedSize] = useState('');
     const [quantity, setQuantity] = useState(1);
+    // Once the current selection is in the cart, the primary button becomes
+    // "Proceed to Checkout" so the user has a clear path forward without hunting
+    // for the cart icon. Any change to size/quantity reverts it to "Add to Cart".
+    const [addedToCart, setAddedToCart] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
     const [relatedProducts, setRelatedProducts] = useState([]);
@@ -34,8 +38,14 @@ const ProductDetails = () => {
     const { addToCart, cartItems } = useCart();
     const { user } = useUser();
 
-    const decreaseQty = () => setQuantity(q => Math.max(1, q - 1));
-    const increaseQty = () => setQuantity(q => Math.min(10, q + 1));
+    // Changing quantity means a new intent to add — revert to "Add to Cart".
+    const decreaseQty = () => { setQuantity(q => Math.max(1, q - 1)); setAddedToCart(false); };
+    const increaseQty = () => { setQuantity(q => Math.min(10, q + 1)); setAddedToCart(false); };
+
+    // Picking a size reflects whether that exact variant is already in the cart:
+    // if it is, offer "Proceed to Checkout" straight away; otherwise "Add to Cart".
+    const variantInCart = (size) => cartItems.some(i => i.id === product?.ID && i.size === size);
+    const selectSize = (size) => { setSelectedSize(size); setAddedToCart(variantInCart(size)); };
 
     useEffect(() => () => clearTimeout(cartToastTimer.current), []);
 
@@ -295,7 +305,7 @@ const ProductDetails = () => {
                             {sizes.map((size) => (
                                 <button
                                     key={size}
-                                    onClick={() => setSelectedSize(size)}
+                                    onClick={() => selectSize(size)}
                                     className={`w-10 h-10 md:w-12 md:h-12 rounded-lg border-2 flex items-center justify-center font-bold text-sm transition-all
                     ${selectedSize === size
                                             ? 'border-primary bg-primary/10 text-primary'
@@ -338,37 +348,34 @@ const ProductDetails = () => {
                             <button
                                 disabled={!selectedSize}
                                 onClick={() => {
-                                    if (selectedSize) {
-                                        addToCart(product, selectedSize, quantity);
-                                        // Bump the key so AnimatePresence treats every click as a
-                                        // fresh element — otherwise clicking again while the toast
-                                        // is still showing just leaves it mounted and the bounce
-                                        // never replays. Also reset the auto-hide timer so a rapid
-                                        // second click doesn't get cut short by the first click's timeout.
-                                        setCartToastKey(k => k + 1);
-                                        setShowCartToast(true);
-                                        clearTimeout(cartToastTimer.current);
-                                        cartToastTimer.current = setTimeout(() => setShowCartToast(false), 3000);
+                                    if (!selectedSize) return;
+                                    // Already added → this click proceeds to checkout.
+                                    if (addedToCart) {
+                                        navigate('/cart');
+                                        return;
                                     }
+                                    addToCart(product, selectedSize, quantity);
+                                    setAddedToCart(true);
+                                    // Bump the key so AnimatePresence treats every click as a
+                                    // fresh element — otherwise clicking again while the toast
+                                    // is still showing just leaves it mounted and the bounce
+                                    // never replays. Also reset the auto-hide timer so a rapid
+                                    // second click doesn't get cut short by the first click's timeout.
+                                    setCartToastKey(k => k + 1);
+                                    setShowCartToast(true);
+                                    clearTimeout(cartToastTimer.current);
+                                    cartToastTimer.current = setTimeout(() => setShowCartToast(false), 3000);
                                 }}
                                 className={`flex-1 font-bold py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm md:text-base ${selectedSize
                                     ? 'bg-primary text-black hover:brightness-90'
                                     : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed opacity-50'
                                     }`}
                             >
-                                <ShoppingCart size={18} /> {selectedSize ? 'ADD TO CART' : 'SELECT SIZE'}
-                            </button>
-                            <button
-                                disabled={cartItems.length === 0}
-                                onClick={() => navigate('/cart')}
-                                title={cartItems.length === 0 ? 'Your cart is empty' : 'Go to Cart'}
-                                className={`w-12 h-12 md:w-14 md:h-14 rounded-xl border-2 flex items-center justify-center transition-colors shrink-0 ${
-                                    cartItems.length === 0
-                                        ? 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-50'
-                                        : 'border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary'
-                                }`}
-                            >
-                                <ShoppingBag size={20} />
+                                {!selectedSize
+                                    ? <><ShoppingCart size={18} /> SELECT SIZE</>
+                                    : addedToCart
+                                        ? <><ShoppingBag size={18} /> PROCEED TO CHECKOUT</>
+                                        : <><ShoppingCart size={18} /> ADD TO CART</>}
                             </button>
                             <button
                                 onClick={() => toggleFavorite(product)}
