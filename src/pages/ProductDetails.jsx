@@ -35,17 +35,16 @@ const ProductDetails = () => {
     const [loadError, setLoadError] = useState(false);
     const [offers, setOffers] = useState([]);
     const { isFavorite, toggleFavorite } = useFavorites();
-    const { addToCart, cartItems } = useCart();
+    const { addToCart } = useCart();
     const { user } = useUser();
 
     // Changing quantity means a new intent to add — revert to "Add to Cart".
     const decreaseQty = () => { setQuantity(q => Math.max(1, q - 1)); setAddedToCart(false); };
     const increaseQty = () => { setQuantity(q => Math.min(10, q + 1)); setAddedToCart(false); };
 
-    // Picking a size reflects whether that exact variant is already in the cart:
-    // if it is, offer "Proceed to Checkout" straight away; otherwise "Add to Cart".
-    const variantInCart = (size) => cartItems.some(i => i.id === product?.ID && i.size === size);
-    const selectSize = (size) => { setSelectedSize(size); setAddedToCart(variantInCart(size)); };
+    // Selecting a size always starts at "Add to Cart" — "Proceed to Checkout"
+    // only appears after the user actually adds this selection to the cart.
+    const selectSize = (size) => { setSelectedSize(size); setAddedToCart(false); };
 
     useEffect(() => () => clearTimeout(cartToastTimer.current), []);
 
