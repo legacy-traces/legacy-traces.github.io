@@ -208,6 +208,46 @@ run locally). The only GitHub-side "config" is:
   using the other account's identity — re-authenticate explicitly if that
   happens rather than assuming the push is broken.
 
+### Content Security Policy (`index.html`) must whitelist BOTH Worker URLs
+
+GitHub Pages can't set real HTTP response headers, so the CSP is a static
+`<meta http-equiv="Content-Security-Policy">` tag in `index.html` — and
+unlike `.env.production`, **`index.html` does not differ between `main` and
+`import-latest`**. It's the same file on both branches, but each branch's
+build calls a different Worker URL (`VITE_API_URL`, baked into the JS at
+build time). If the CSP's `connect-src` only lists one Worker's URL, the
+*other* environment's build gets its own API calls silently blocked by the
+browser with an error like:
+
+```
+Connecting to '<worker-url>' violates the following Content Security Policy
+directive: "connect-src 'self' ...". The action has been blocked.
+```
+
+This isn't a build error or a CORS/backend issue — it's purely client-side,
+enforced by the browser regardless of what the server allows, and it will
+look like the API call vanished entirely (no network request even leaves
+the browser). The fix is to list **both** Worker URLs in `connect-src`
+(same pattern already used for `api.cashfree.com` +
+`sandbox.cashfree.com` — this CSP is deliberately shared/dual-environment,
+not per-branch):
+
+```
+connect-src 'self'
+  https://legacy-traces-worker.legacytraces24.workers.dev
+  https://legacy-traces-worker.legacytracesdev.workers.dev
+  ...
+```
+
+**To avoid this in future:** any time a *new* external host is added to
+either environment (a new payment gateway, analytics tool, different Worker
+URL, etc.), add it to `index.html`'s CSP on `main` and sync that one file
+over to `import-latest` (`git checkout main -- index.html` while on
+`import-latest`, don't do a full merge) — the same way `CLAUDE.md` itself
+gets synced. Since `index.html` is genuinely identical infrastructure
+(unlike `.env.production`/`public/CNAME`, which are supposed to differ),
+it should never diverge between the two branches at all.
+
 ### Known intentional prod/non-prod schema difference
 
 Prod's D1 has **17 tables** (no `contact_messages`); non-prod has **18**
