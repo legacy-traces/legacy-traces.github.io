@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
@@ -72,8 +72,15 @@ const Checkout = () => {
         setTimeout(() => setPageLoading(false), 600);
     }, []);
 
+    // Set right before a successful payment clears the cart, so this effect
+    // doesn't treat that intentional clear as "arrived here with an empty
+    // cart" and redirect to /cart instead of the /orders navigation that's
+    // already in flight — clearCart() flips cartItems to [] and would
+    // otherwise race the post-payment navigate('/orders') call.
+    const justCheckedOutRef = useRef(false);
+
     useEffect(() => {
-        if (isCustomMode) return;
+        if (isCustomMode || justCheckedOutRef.current) return;
         if (cartItems.length === 0) navigate('/cart');
     }, [cartItems, navigate, isCustomMode]);
 
@@ -362,7 +369,7 @@ const Checkout = () => {
             // customer just never saw confirmation) — no new charge was
             // started, so there's no payment_session_id/modal to open here.
             if (result.success && result.alreadyPaid) {
-                if (!isCustomMode) clearCart();
+                if (!isCustomMode) { justCheckedOutRef.current = true; clearCart(); }
                 navigate('/orders', { state: { orderPlaced: true } });
                 return;
             }
@@ -393,7 +400,7 @@ const Checkout = () => {
             const statusRes = await pollPaymentStatus(result.order_id);
 
             if (statusRes?.status === 'SUCCESS') {
-                if (!isCustomMode) clearCart();
+                if (!isCustomMode) { justCheckedOutRef.current = true; clearCart(); }
                 navigate('/orders', { state: { orderPlaced: true } });
             } else if (statusRes?.status === 'FAILED') {
                 setPayError('Payment was declined or cancelled. Please try a different method.');
@@ -452,7 +459,7 @@ const Checkout = () => {
             // Backend found this order's COD advance already paid on a prior
             // attempt — no new charge was started, nothing to open here.
             if (result.success && result.alreadyPaid) {
-                if (!isCustomMode) clearCart();
+                if (!isCustomMode) { justCheckedOutRef.current = true; clearCart(); }
                 navigate('/orders', { state: { orderPlaced: true } });
                 return;
             }
@@ -473,7 +480,7 @@ const Checkout = () => {
             const statusRes = await pollPaymentStatus(result.order_id);
 
             if (statusRes?.status === 'SUCCESS') {
-                if (!isCustomMode) clearCart();
+                if (!isCustomMode) { justCheckedOutRef.current = true; clearCart(); }
                 navigate('/orders', { state: { orderPlaced: true } });
             } else if (statusRes?.status === 'FAILED') {
                 setPayError('Advance payment was declined or cancelled. Please try again.');
