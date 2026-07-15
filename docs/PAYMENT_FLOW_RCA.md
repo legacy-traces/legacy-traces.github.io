@@ -7,11 +7,16 @@ customer/cart sometimes ends up with two order rows — one stuck
 and paid successfully on a later attempt. For COD, an order has been seen
 reaching a placed state without the ₹100 advance actually clearing.
 
-**Confirmed (2026-07-14, project owner): there is currently no Cashfree
-webhook configured for this account.** This is the single most important
-fact in this analysis — it means the mechanism this document originally
-treated as a "fallback" is, in production today, the *only* mechanism that
-exists. Everything below is written with that confirmed.
+**Update (2026-07-15) — root cause found and fixed on non-prod, pending
+prod:** what was first reported (2026-07-14) as "no Cashfree webhook is
+configured" turned out to be more specific: a webhook *was* configured in
+prod, but every single delivery attempt for at least 7 days had been
+rejected with `HTTP 403` by this Worker's own CORS check — confirmed
+directly against real Cashfree dashboard delivery logs, including a genuine
+₹549 successful payment that was silently dropped. §2.1 below has the full
+mechanism and the fix; §2.3 covers a second bug (payment-row deletion on
+retry) that was dormant while the webhook was blocked but would have
+activated the moment the CORS issue was fixed, so both were fixed together.
 
 This document explains the current process end-to-end (button click →
 API → Cashfree → DB), then walks through exactly where it breaks.
@@ -122,17 +127,22 @@ the one way this can still be bypassed manually).
 
 ## 2. Where it actually breaks
 
-### 2.1 — ROOT CAUSE (confirmed, primary): no webhook exists, so the ~12s client poll is the only confirmation path in the entire system
+### 2.1 — ROOT CAUSE, FIXED (non-prod 2026-07-15, prod pending): the webhook existed but was rejected with 403 by our own CORS check
+
+*(Written 2026-07-14, before the actual cause was pinned down — kept as-is
+below since it correctly diagnoses the effect, just not yet the precise
+mechanism. See the update at the top of this document and the fix note at
+the end of this section for what was actually wrong.)*
 
 `backend.js` has a fully-implemented `paymentWebhook` handler — signature
 verification, idempotent lookup by `cf_order_id`, calls `markOrderPaid`.
 Every `initPayment`/`initCodPayment` call correctly sends a `notify_url`
-pointing at it. **None of that runs**, because Cashfree has no webhook
-configured for this account/app to actually call that URL. The code was
-written assuming the webhook (server-to-server, independent of the
-customer's device) would be the primary confirmation path, with the
-frontend poll as a fast-feedback nicety. In reality, the poll is carrying
-100% of the load it was never designed to carry alone.
+pointing at it. **None of that ran**, because — as first written here —
+it looked like no webhook was configured at all. The code was written
+assuming the webhook (server-to-server, independent of the customer's
+device) would be the primary confirmation path, with the frontend poll as
+a fast-feedback nicety. In reality, the poll was carrying 100% of the load
+it was never designed to carry alone.
 
 This directly explains "payment succeeded but shows Pending Payment,"
 without needing any other bug in the mix: Cashfree took the money, the
@@ -147,6 +157,22 @@ leaves the browser to authorize in a separate app.
 some rate proportional to how often customers don't sit and watch the tab
 for 12 seconds after paying**, and there is currently no way for any of
 those orders to ever self-correct.
+
+**What was actually wrong (confirmed 2026-07-15):** the webhook *was*
+configured in Cashfree's dashboard for prod. Every delivery attempt was
+failing with `HTTP 403 FORBIDDEN` — confirmed directly against Cashfree's
+own webhook delivery logs, including a real successful ₹549 UPI payment
+that never got confirmed. The cause: `fetch()`'s CORS block in `backend.js`
+rejects any request whose `Origin` header doesn't match `ALLOWED_ORIGIN`,
+with no exception for anything else — and Cashfree's webhook is a
+server-to-server POST that never sends a browser `Origin` header at all, so
+it could never pass that check. CORS is a browser-only enforcement
+mechanism; it doesn't apply to server-to-server calls, and this route's
+real authentication is the HMAC signature already verified inside
+`paymentWebhook()`. **Fix:** the webhook route is now exempted from the
+Origin check. Deployed and verified on non-prod (confirmed a simulated
+no-`Origin` POST now returns `200` instead of `403`); pending the combined
+prod push — see `CLAUDE.md`.
 
 ### 2.2 — Duplicate order rows: the reuse guard only catches a byte-for-byte identical retry
 
@@ -175,9 +201,10 @@ before. Neither row is ever cleaned up. This is the direct mechanism behind
 seeing two rows (one stuck `Pending Payment`, one `New`) for what was, from
 the customer's perspective, one purchase.
 
-### 2.3 — Latent bug, will activate the moment a webhook is added: retries delete the previous payment record
+### 2.3 — FIXED (non-prod, 2026-07-15): retries used to delete the previous payment record
 
-`upsertPayment` (`backend.js`):
+`upsertPayment` (`backend.js`) used to hard-delete the order's previous
+`payments` row before inserting a new one:
 
 ```js
 const upsertPayment = async (orderId, cfOrderId, amount, googleSub) => {
@@ -188,22 +215,35 @@ const upsertPayment = async (orderId, cfOrderId, amount, googleSub) => {
 };
 ```
 
-This doesn't cause visible damage *today* only because there's no webhook
-to orphan — the client poll always looks up the payment row for its own
-`orderId`/`cf_order_id` from the same request it just made, so it's
-self-consistent in the moment. But the instant a webhook is configured (see
-recommendation #1), this becomes live and dangerous: if a customer retries
-before an *earlier* attempt's webhook has arrived, that retry's
-`upsertPayment` call deletes the payment row the earlier webhook needs to
-match against (`SELECT ... WHERE cf_order_id = ?` in `paymentWebhook`
-finds nothing → discarded as "unknown order"). A real, successful charge
-from the first attempt would then have no order to attach to — and if both
-attempts settle, the customer is charged twice with only the second ever
-reflected.
+This didn't cause visible damage before §2.1 was fixed, only because there
+was no webhook to orphan. Once the webhook actually reaches the backend,
+this becomes live and dangerous: if a customer retries before an *earlier*
+attempt's webhook has arrived, that retry's `upsertPayment` call deletes the
+payment row the earlier webhook needs to match against (`SELECT ... WHERE
+cf_order_id = ?` in `paymentWebhook` finds nothing → discarded as "unknown
+order"). A real, successful charge from the first attempt would then have
+no order to attach to — and if both attempts settle, the customer is
+charged twice with only the second ever reflected.
 
-**This must be fixed in the same change that adds the webhook**, not
-treated as a separate follow-up — otherwise turning the webhook on will
-introduce a new failure mode rather than removing one.
+**Fix (deployed and verified on non-prod, pending the combined prod push —
+see `CLAUDE.md`):** `payments` gained an `is_deleted` column
+(`schema_payments_soft_delete.sql`). `upsertPayment` now marks the prior
+row(s) for an order as superseded (`is_deleted = 1`) instead of deleting
+them, so a late-arriving webhook for an old `cf_order_id` still finds its
+row and can call `markOrderPaid`. `getPaymentStatus` was updated to only
+read the *current* (`is_deleted = 0`) attempt when polling, and — as an
+extra safety net — now also checks the order's own `order_status` directly:
+if an earlier attempt's webhook already confirmed (or failed) the order
+while the customer's current attempt is still pending, the poll reports the
+order's true state rather than the current attempt's own (possibly
+still-pending) status.
+
+Also fixed in the same change: the webhook only ever recognized
+`payment_status` values of `"SUCCESS"` or `"FAILED"` — Cashfree's
+`PAYMENT_USER_DROPPED_WEBHOOK` event (fired when a customer abandons the
+modal) actually sends `"USER_DROPPED"`, which previously fell through to the
+ambiguous `"PENDING"` bucket and never closed the order out. `USER_DROPPED`
+is now treated the same as `FAILED`.
 
 ### 2.4 — Secondary: admin status changes have no payment-verification guard
 
@@ -216,23 +256,19 @@ actually happening (the far more likely path is simply that the ₹100 *did*
 clear on Cashfree, but the order was never confirmed and someone assumed it
 was safe to advance manually) — but it's worth closing regardless: nothing
 today distinguishes a genuinely-verified payment from an admin override.
+**Not yet fixed.**
 
 ---
 
 ## 3. Recommendations (priority order)
 
-1. **Get a real webhook configured with Cashfree, and fix §2.3 in the same
-   change.** This is the actual fix for "payment succeeded but shows
-   Pending" — nothing else meaningfully addresses it, since right now
-   nothing but a 12-second client-side poll ever confirms a payment.
-   Confirm in Cashfree's dashboard whether webhooks need to be registered
-   there directly (some integration modes don't honor a per-order
-   `notify_url` at all and require the webhook URL configured against the
-   app/account instead) — this can't be resolved from the codebase, it's a
-   Cashfree account setting. When wiring it up, change `upsertPayment` to
-   stop deleting prior payment rows for an order that might still have a
-   webhook in flight (e.g. keep one `payments` row per attempt instead of
-   per order, or check the existing row's status before overwriting it).
+1. ~~Get a real webhook configured with Cashfree, and fix §2.3 in the same
+   change.~~ **Done (2026-07-15).** A webhook *was* already configured in
+   prod — it was being rejected with a `403` by the CORS Origin allow-list
+   before ever reaching the webhook logic (§2.1). Fixed and verified on
+   non-prod, along with the `upsertPayment` soft-delete fix (§2.3) and
+   `USER_DROPPED` handling in the same change. **Pending the combined prod
+   deployment — see `CLAUDE.md`'s "Pending prod deployment" section.**
 2. **Add a scheduled reconciliation job** (Cron Trigger in
    `wrangler.toml`) that finds `orders` in `Pending Payment` older than,
    say, 15 minutes with a linked `payments` row still `PENDING`, and

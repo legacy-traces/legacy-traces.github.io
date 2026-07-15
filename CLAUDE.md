@@ -30,7 +30,25 @@ for the CORS fix below, but the owner chose to hold it too).
 2. Temporary `console.log` instrumentation added throughout `paymentWebhook`
    (visible via `wrangler tail`) — safe to deploy alongside the fix, trim
    later once confirmed reliable in prod.
-3. **Known-affected order needing manual review once the fix is live:**
+3. **Payments soft-delete fix** (`upsertPayment`, `getPaymentStatus`) — a
+   retry used to hard-`DELETE` the order's previous `payments` row before
+   inserting a new one. Once the webhook actually works (item 1 above), this
+   becomes a live bug: if a customer retries before an *earlier* attempt's
+   webhook lands, the retry deletes the row that webhook needs to match
+   against, orphaning a real successful charge (and risking a double charge
+   if both attempts settle). Fixed by soft-deleting instead (new
+   `payments.is_deleted` column — requires running
+   `schema_payments_soft_delete.sql` against prod D1 first, see below).
+   **Must ship in the same push as item 1**, not after — turning the webhook
+   on without this fix reintroduces a way to lose payments.
+4. **`USER_DROPPED` now treated as a terminal failure** in `paymentWebhook`
+   — previously only `SUCCESS`/`FAILED` were recognized, so an abandoned
+   payment (customer closes the Cashfree modal) fell through to `PENDING`
+   and never closed out the order, even though Cashfree does send this event.
+5. Temporary `console.log` instrumentation added throughout `paymentWebhook`
+   (visible via `wrangler tail`) — safe to deploy alongside the fix, trim
+   later once confirmed reliable in prod.
+6. **Known-affected order needing manual review once the fix is live:**
    order `LT1626` (`cf_payment_id 6012756811`, ₹549, UPI, customer "Vimaly
    M.") paid successfully on 2026-07-15 but is stuck `Pending Payment` in
    prod D1 — the webhook that would have confirmed it was 403'd. Deploying
@@ -40,10 +58,15 @@ for the CORS fix below, but the owner chose to hold it too).
    `FAILED` `PAYMENT_SUCCESS_WEBHOOK` attempts in that window against D1
    orders still in `Pending Payment` to find every affected order, not just
    this one.
-4. Deploy with: `cd Backend && npx wrangler login` (sign in as
-   `legacytraces24@gmail.com`) `&& npx wrangler deploy` (no `--env` flag).
+7. Deploy with:
+   ```bash
+   cd Backend
+   npx wrangler login    # sign in as legacytraces24@gmail.com
+   npx wrangler d1 execute legacy-traces-db --remote --file=./schema_payments_soft_delete.sql
+   npx wrangler deploy   # no --env flag
+   ```
 
-**Frontend (`main` branch — 5 commits ahead of `origin/main`):**
+**Frontend (`main` branch — 7 commits ahead of `origin/main`):**
 - `faed06b`, `b27a6ce`, `e9958ec` — this `CLAUDE.md` file itself (topology,
   schema parity-check steps, full env-var reference)
 - `dfa36ed` — CSP fix whitelisting the non-prod Worker URL in
@@ -51,7 +74,9 @@ for the CORS fix below, but the owner chose to hold it too).
   allow-list, doesn't change prod's own behavior)
 - `909215c` — Admin dashboard: revenue = Shipped+Delivered, CF order ID,
   advanced filters
-- `docs/PAYMENT_FLOW_RCA.md` — untracked, not yet committed at all
+- `0f89122` — `docs/PAYMENT_FLOW_RCA.md` + this pending-deployment tracking
+- `d84d172` — Checkout: warns the customer not to close the payment
+  window/tab during the active payment or verification window
 - Deploy with: `git push origin main`, then `git checkout main && npm run
   build && npm run deploy`
 
