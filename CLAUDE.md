@@ -51,7 +51,9 @@ for the CORS fix below, but the owner chose to hold it too).
    Cashfree confirms it's dead (`ACTIVE`/`EXPIRED`/`CANCELLED`), the row is
    hard-deleted outright. This is now the primary mechanism (ground truth,
    not a heuristic); the 10-minute timer is the fallback for when Cashfree
-   itself can't be reached.
+   itself can't be reached. `initCustomOrderPayment`/`initCustomOrderCodPayment`
+   were initially missed when this was added — fixed the same day so custom
+   orders get identical retry protection, not just regular cart checkout.
 4. **`USER_DROPPED` now treated as a terminal failure** in `paymentWebhook`
    — previously only `SUCCESS`/`FAILED` were recognized, so an abandoned
    payment (customer closes the Cashfree modal) fell through to `PENDING`
@@ -102,6 +104,9 @@ for the CORS fix below, but the owner chose to hold it too).
 - `44cc4f0` — Admin dashboard: ServiceNow-style unified column search
   (per-column lens-icon search feeding the same condition model as the
   Advanced panel; replaces the old top search boxes + separate date range)
+- `e325726` — Checkout: fixes a real bug where a successful (non-custom)
+  payment redirected to `/cart` instead of `/orders` — `clearCart()` raced
+  against the Checkout empty-cart effect; guarded with `justCheckedOutRef`
 - Deploy with: `git push origin main`, then `git checkout main && npm run
   build && npm run deploy`
 
