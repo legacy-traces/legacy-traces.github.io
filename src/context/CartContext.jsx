@@ -46,6 +46,23 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
     };
 
+    // Reconciles cached cart items (price/stock snapshotted at add-to-cart
+    // time, possibly long ago) against a fresh catalog fetch — called at
+    // checkout so the customer pays the current price, not a stale one.
+    // Items no longer in the active catalog are flagged (`unavailable: true`)
+    // rather than silently dropped, so Checkout can surface it instead of
+    // the cart just quietly losing an item.
+    const syncCartWithCatalog = (freshProducts) => {
+        const freshById = Object.fromEntries(freshProducts.map(p => [p.ID, p]));
+        setCartItems(prevItems =>
+            prevItems.map(item => {
+                const fresh = freshById[item.id];
+                if (!fresh) return { ...item, unavailable: true };
+                return { ...item, ...fresh, id: fresh.ID, size: item.size, quantity: item.quantity, unavailable: false };
+            })
+        );
+    };
+
     const getCartTotal = () => {
         return cartItems.reduce((total, item) => total + (item.Price * item.quantity), 0);
     };
@@ -62,7 +79,8 @@ export const CartProvider = ({ children }) => {
             updateQuantity,
             clearCart,
             getCartTotal,
-            getCartCount
+            getCartCount,
+            syncCartWithCatalog
         }}>
             {children}
         </CartContext.Provider>

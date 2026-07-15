@@ -8,6 +8,129 @@ or `.env.production` — the two environments look identical at a glance
 (same Worker name, same D1 name) and are only distinguished by *which
 account/remote is currently active*.
 
+## ⚠ Pending prod deployment (held for a single combined push, per project owner)
+
+As of 2026-07-15, prod (`origin` / `legacytraces24` account) is **behind**
+both the local `main` branch and the non-prod Worker. Nothing below has been
+deployed to prod yet — do it all together in one stretch, not piecemeal,
+unless explicitly told otherwise (an exception was already called out once
+for the CORS fix below, but the owner chose to hold it too).
+
+**Backend (`Backend/backend.js` — not git-tracked, deploy via wrangler only):**
+1. **CORS fix exempting the Cashfree webhook route from Origin-based 403
+   rejection** (`fetch()`'s CORS block, near the top of the file). Confirmed
+   via the project owner's own Cashfree dashboard logs: every
+   `PAYMENT_SUCCESS_WEBHOOK` delivery attempt to prod has failed with `403
+   FORBIDDEN` for at least 7 days, because Cashfree's webhook POST never
+   sends a browser `Origin` header and the CORS allow-list check was
+   rejecting it before the request ever reached the webhook logic. This is
+   the actual root cause of "payment succeeded but shows Pending Payment" in
+   prod — see `docs/PAYMENT_FLOW_RCA.md`. Already deployed and verified
+   working on non-prod.
+2. Temporary `console.log` instrumentation added throughout `paymentWebhook`
+   (visible via `wrangler tail`) — safe to deploy alongside the fix, trim
+   later once confirmed reliable in prod.
+3. **Payments soft-delete fix** (`upsertPayment`, `getPaymentStatus`) — a
+   retry used to hard-`DELETE` the order's previous `payments` row before
+   inserting a new one. Once the webhook actually works (item 1 above), this
+   becomes a live bug: if a customer retries before an *earlier* attempt's
+   webhook lands, the retry deletes the row that webhook needs to match
+   against, orphaning a real successful charge (and risking a double charge
+   if both attempts settle). Fixed by soft-deleting instead (new
+   `payments.is_deleted` column — requires running
+   `schema_payments_soft_delete.sql` against prod D1 first, see below).
+   **Must ship in the same push as item 1**, not after — turning the webhook
+   on without this fix reintroduces a way to lose payments. Refined twice
+   further the same day: (a) a prior attempt is only preserved (soft-deleted)
+   while it's < 10 minutes old (its webhook could still be in flight) — past
+   that, a retry reuses the same row; (b) `initPayment`/`initCodPayment` now
+   actively verify a retry's prior attempt with Cashfree directly
+   (`resolvePriorPendingPayment`) before starting a new charge — if it
+   already succeeded, the order is confirmed immediately and the frontend
+   skips opening a second payment modal (`alreadyPaid` response); if
+   Cashfree confirms it's dead (`ACTIVE`/`EXPIRED`/`CANCELLED`), the row is
+   hard-deleted outright. This is now the primary mechanism (ground truth,
+   not a heuristic); the 10-minute timer is the fallback for when Cashfree
+   itself can't be reached. `initCustomOrderPayment`/`initCustomOrderCodPayment`
+   were initially missed when this was added — fixed the same day so custom
+   orders get identical retry protection, not just regular cart checkout.
+4. **`USER_DROPPED` now treated as a terminal failure** in `paymentWebhook`
+   — previously only `SUCCESS`/`FAILED` were recognized, so an abandoned
+   payment (customer closes the Cashfree modal) fell through to `PENDING`
+   and never closed out the order, even though Cashfree does send this event.
+5. Temporary `console.log` instrumentation added throughout `paymentWebhook`
+   (visible via `wrangler tail`) — safe to deploy alongside the fix, trim
+   later once confirmed reliable in prod.
+6. **Known-affected order needing manual review once the fix is live:**
+   order `LT1626` (`cf_payment_id 6012756811`, ₹549, UPI, customer "Vimaly
+   M.") paid successfully on 2026-07-15 but is stuck `Pending Payment` in
+   prod D1 — the webhook that would have confirmed it was 403'd. Deploying
+   the CORS fix only prevents *future* payments from being lost; it does
+   **not** retroactively fix orders already stuck from the past 7+ days of
+   failed deliveries. Cross-check Cashfree's dashboard webhook logs for all
+   `FAILED` `PAYMENT_SUCCESS_WEBHOOK` attempts in that window against D1
+   orders still in `Pending Payment` to find every affected order, not just
+   this one.
+7. **`getAdminOrders`'s `LEFT JOIN payments` now filters `is_deleted = 0`** —
+   without it, an order with more than one `payments` row (any retried
+   payment, now common since item 3 above) was returned once *per payment
+   row*, duplicating that order in the admin orders list and making sorting
+   look broken. Same root cause as item 3: the join's old comment assumed
+   "an order never has two payments rows," which stopped being true the
+   moment `upsertPayment` switched to soft-delete.
+8. **New: stock-based delivery estimate**, sent as the `eta` field on the
+   `order_confirmation` WhatsApp message. `products` gained a `quantity`
+   column (`schema_product_stock.sql`, default **100**, not 0 — there's no
+   admin UI yet to set real per-product stock, and defaulting to 0 would've
+   made every product look out-of-stock the instant this ships). At order
+   time, every function that places/pays for a cart order (`postOrder`,
+   `initPayment`, `initCodPayment`) checks each cart item's quantity against
+   `products.quantity`; if everything ordered is covered, the estimate is
+   **+3 calendar days** from today, else **+7 days**. This is computed once
+   and stored on `orders.delivery_eta` (an existing, previously-admin-edited
+   column, now repurposed — not shown in the admin UI, that was removed
+   earlier per a separate request) so `markOrderPaid` can include it in the
+   WhatsApp payload without needing to re-derive cart contents later. Custom
+   orders (`confirmCustomOrder`, `initCustomOrderPayment`,
+   `initCustomOrderCodPayment`) always use the **+7 day** tier — they're made
+   to order, not pulled from catalog stock.
+   **Known gap:** there is still no admin UI to actually set/edit a
+   product's real stock `quantity` — until one exists, update it the same
+   way every other product field is managed today: direct
+   `wrangler d1 execute ... --command "UPDATE products SET quantity = ? WHERE id = ?"`.
+9. Deploy with:
+   ```bash
+   cd Backend
+   npx wrangler login    # sign in as legacytraces24@gmail.com
+   npx wrangler d1 execute legacy-traces-db --remote --file=./schema_payments_soft_delete.sql
+   npx wrangler d1 execute legacy-traces-db --remote --file=./schema_product_stock.sql
+   npx wrangler deploy   # no --env flag
+   ```
+
+**Frontend (`main` branch — 8 commits ahead of `origin/main`):**
+- `faed06b`, `b27a6ce`, `e9958ec` — this `CLAUDE.md` file itself (topology,
+  schema parity-check steps, full env-var reference)
+- `dfa36ed` — CSP fix whitelisting the non-prod Worker URL in
+  `index.html`'s `connect-src` (harmless for prod — just widens the
+  allow-list, doesn't change prod's own behavior)
+- `909215c` — Admin dashboard: revenue = Shipped+Delivered, CF order ID,
+  advanced filters
+- `0f89122` — `docs/PAYMENT_FLOW_RCA.md` + this pending-deployment tracking
+- `d84d172` — Checkout: warns the customer not to close the payment
+  window/tab during the active payment or verification window
+- `639b002` — Checkout: skips a redundant payment modal if a retry is
+  already paid (pairs with backend item 3)
+- `9d209e5` — Admin dashboard: clickable summary/status filter cards,
+  compact bordered orders table
+- `44cc4f0` — Admin dashboard: ServiceNow-style unified column search
+  (per-column lens-icon search feeding the same condition model as the
+  Advanced panel; replaces the old top search boxes + separate date range)
+- `e325726` — Checkout: fixes a real bug where a successful (non-custom)
+  payment redirected to `/cart` instead of `/orders` — `clearCart()` raced
+  against the Checkout empty-cart effect; guarded with `justCheckedOutRef`
+- Deploy with: `git push origin main`, then `git checkout main && npm run
+  build && npm run deploy`
+
 ## Topology at a glance
 
 | | **Production** | **Non-prod** |
