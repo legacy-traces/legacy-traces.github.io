@@ -78,11 +78,32 @@ for the CORS fix below, but the owner chose to hold it too).
    look broken. Same root cause as item 3: the join's old comment assumed
    "an order never has two payments rows," which stopped being true the
    moment `upsertPayment` switched to soft-delete.
-8. Deploy with:
+8. **New: stock-based delivery estimate**, sent as the `eta` field on the
+   `order_confirmation` WhatsApp message. `products` gained a `quantity`
+   column (`schema_product_stock.sql`, default **100**, not 0 — there's no
+   admin UI yet to set real per-product stock, and defaulting to 0 would've
+   made every product look out-of-stock the instant this ships). At order
+   time, every function that places/pays for a cart order (`postOrder`,
+   `initPayment`, `initCodPayment`) checks each cart item's quantity against
+   `products.quantity`; if everything ordered is covered, the estimate is
+   **+3 calendar days** from today, else **+7 days**. This is computed once
+   and stored on `orders.delivery_eta` (an existing, previously-admin-edited
+   column, now repurposed — not shown in the admin UI, that was removed
+   earlier per a separate request) so `markOrderPaid` can include it in the
+   WhatsApp payload without needing to re-derive cart contents later. Custom
+   orders (`confirmCustomOrder`, `initCustomOrderPayment`,
+   `initCustomOrderCodPayment`) always use the **+7 day** tier — they're made
+   to order, not pulled from catalog stock.
+   **Known gap:** there is still no admin UI to actually set/edit a
+   product's real stock `quantity` — until one exists, update it the same
+   way every other product field is managed today: direct
+   `wrangler d1 execute ... --command "UPDATE products SET quantity = ? WHERE id = ?"`.
+9. Deploy with:
    ```bash
    cd Backend
    npx wrangler login    # sign in as legacytraces24@gmail.com
    npx wrangler d1 execute legacy-traces-db --remote --file=./schema_payments_soft_delete.sql
+   npx wrangler d1 execute legacy-traces-db --remote --file=./schema_product_stock.sql
    npx wrangler deploy   # no --env flag
    ```
 
