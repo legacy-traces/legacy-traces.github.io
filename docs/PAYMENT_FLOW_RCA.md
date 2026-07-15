@@ -238,6 +238,18 @@ while the customer's current attempt is still pending, the poll reports the
 order's true state rather than the current attempt's own (possibly
 still-pending) status.
 
+**Follow-up (2026-07-15):** soft-deleting on every retry means a customer
+who repeatedly opens checkout and backs out without paying accumulates one
+`payments` row per attempt — harmless to correctness, but unbounded growth.
+`upsertPayment` now only preserves (soft-deletes) the previous attempt while
+it's recent enough (< 10 minutes old) that its webhook could plausibly still
+be in flight; past that window it reuses the same row in place instead of
+inserting a new one. 10 minutes is a generous margin — Cashfree's webhook
+delivery is near-real-time, and this Worker's webhook handler always acks
+with `200` (see `paymentWebhook`'s comment), so Cashfree never retries a
+delivery it already made — the only lag being protected against is the
+normal one-time delivery latency of the *first* attempt.
+
 Also fixed in the same change: the webhook only ever recognized
 `payment_status` values of `"SUCCESS"` or `"FAILED"` — Cashfree's
 `PAYMENT_USER_DROPPED_WEBHOOK` event (fired when a customer abandons the
