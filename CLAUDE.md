@@ -8,6 +8,53 @@ or `.env.production` — the two environments look identical at a glance
 (same Worker name, same D1 name) and are only distinguished by *which
 account/remote is currently active*.
 
+## ⚠ Pending prod deployment (held for a single combined push, per project owner)
+
+As of 2026-07-15, prod (`origin` / `legacytraces24` account) is **behind**
+both the local `main` branch and the non-prod Worker. Nothing below has been
+deployed to prod yet — do it all together in one stretch, not piecemeal,
+unless explicitly told otherwise (an exception was already called out once
+for the CORS fix below, but the owner chose to hold it too).
+
+**Backend (`Backend/backend.js` — not git-tracked, deploy via wrangler only):**
+1. **CORS fix exempting the Cashfree webhook route from Origin-based 403
+   rejection** (`fetch()`'s CORS block, near the top of the file). Confirmed
+   via the project owner's own Cashfree dashboard logs: every
+   `PAYMENT_SUCCESS_WEBHOOK` delivery attempt to prod has failed with `403
+   FORBIDDEN` for at least 7 days, because Cashfree's webhook POST never
+   sends a browser `Origin` header and the CORS allow-list check was
+   rejecting it before the request ever reached the webhook logic. This is
+   the actual root cause of "payment succeeded but shows Pending Payment" in
+   prod — see `docs/PAYMENT_FLOW_RCA.md`. Already deployed and verified
+   working on non-prod.
+2. Temporary `console.log` instrumentation added throughout `paymentWebhook`
+   (visible via `wrangler tail`) — safe to deploy alongside the fix, trim
+   later once confirmed reliable in prod.
+3. **Known-affected order needing manual review once the fix is live:**
+   order `LT1626` (`cf_payment_id 6012756811`, ₹549, UPI, customer "Vimaly
+   M.") paid successfully on 2026-07-15 but is stuck `Pending Payment` in
+   prod D1 — the webhook that would have confirmed it was 403'd. Deploying
+   the CORS fix only prevents *future* payments from being lost; it does
+   **not** retroactively fix orders already stuck from the past 7+ days of
+   failed deliveries. Cross-check Cashfree's dashboard webhook logs for all
+   `FAILED` `PAYMENT_SUCCESS_WEBHOOK` attempts in that window against D1
+   orders still in `Pending Payment` to find every affected order, not just
+   this one.
+4. Deploy with: `cd Backend && npx wrangler login` (sign in as
+   `legacytraces24@gmail.com`) `&& npx wrangler deploy` (no `--env` flag).
+
+**Frontend (`main` branch — 5 commits ahead of `origin/main`):**
+- `faed06b`, `b27a6ce`, `e9958ec` — this `CLAUDE.md` file itself (topology,
+  schema parity-check steps, full env-var reference)
+- `dfa36ed` — CSP fix whitelisting the non-prod Worker URL in
+  `index.html`'s `connect-src` (harmless for prod — just widens the
+  allow-list, doesn't change prod's own behavior)
+- `909215c` — Admin dashboard: revenue = Shipped+Delivered, CF order ID,
+  advanced filters
+- `docs/PAYMENT_FLOW_RCA.md` — untracked, not yet committed at all
+- Deploy with: `git push origin main`, then `git checkout main && npm run
+  build && npm run deploy`
+
 ## Topology at a glance
 
 | | **Production** | **Non-prod** |
