@@ -8,7 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 import {
     saveCustomer, updateCustomer,
     fetchUserDetails, addAddress, initPayment, initCodPayment, checkPaymentStatus, validateCoupon, fetchAvailableCoupons,
-    getMyCustomOrders, initCustomOrderPayment, initCustomOrderCodPayment,
+    getMyCustomOrders, initCustomOrderPayment, initCustomOrderCodPayment, refreshProducts,
 } from '../api/api';
 
 const COD_ADVANCE_AMOUNT = 100;
@@ -18,7 +18,7 @@ const Checkout = () => {
     const navigate = useNavigate();
     const { customOrderId } = useParams();
     const isCustomMode = !!customOrderId;
-    const { cartItems, getCartTotal, clearCart } = useCart();
+    const { cartItems, getCartTotal, clearCart, syncCartWithCatalog } = useCart();
     const { user, setUser } = useUser();
 
     // ── Custom order mode: paying for an admin-quoted custom design instead
@@ -218,6 +218,37 @@ const Checkout = () => {
         fetchAvailableCoupons(user?.idToken, subtotal)
             .then(res => setAvailableCoupons(res?.success ? res.coupons : []))
             .catch(() => setAvailableCoupons([]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step]);
+
+    // ── Stale cart reconciliation ────────────────────────────────────────────
+    // Cart items cache the full product snapshot (price, stock) from whenever
+    // they were added — possibly long before checkout. Re-fetch the catalog
+    // once at the summary step and reconcile prices/stock against it (server
+    // still recomputes the real total from D1 at payment time regardless —
+    // this is purely so the customer sees accurate numbers before paying,
+    // not something payment correctness depends on).
+    const [catalogNotice, setCatalogNotice] = useState(null); // { priceChanged, lowStock, unavailable }
+    useEffect(() => {
+        if (step !== 3 || isCustomMode) return;
+        refreshProducts().then(freshProducts => {
+            const priceChanged = [];
+            const lowStock     = [];
+            const unavailable  = [];
+            const freshById = Object.fromEntries(freshProducts.map(p => [p.ID, p]));
+            for (const item of cartItems) {
+                const fresh = freshById[item.id];
+                if (!fresh) { unavailable.push(item.Name); continue; }
+                if (Number(fresh.Price) !== Number(item.Price)) priceChanged.push(fresh.Name);
+                if (Number(fresh.Quantity) < item.quantity) lowStock.push(fresh.Name);
+            }
+            syncCartWithCatalog(freshProducts);
+            if (priceChanged.length || lowStock.length || unavailable.length) {
+                setCatalogNotice({ priceChanged, lowStock, unavailable });
+            } else {
+                setCatalogNotice(null);
+            }
+        }).catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [step]);
 
@@ -979,6 +1010,21 @@ const Checkout = () => {
                                 )}
                             </div>
 
+                            {catalogNotice && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 p-3 rounded-xl text-sm space-y-1">
+                                    <p className="font-semibold flex items-center gap-1.5"><span>⚠️</span> Your cart was updated with the latest pricing/stock</p>
+                                    {catalogNotice.priceChanged.length > 0 && (
+                                        <p>Price changed: {catalogNotice.priceChanged.join(', ')}</p>
+                                    )}
+                                    {catalogNotice.lowStock.length > 0 && (
+                                        <p>Limited stock (may take a bit longer to deliver): {catalogNotice.lowStock.join(', ')}</p>
+                                    )}
+                                    {catalogNotice.unavailable.length > 0 && (
+                                        <p>No longer available, please remove from cart: {catalogNotice.unavailable.join(', ')}</p>
+                                    )}
+                                </div>
+                            )}
+
                             {payError && (
                                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-3 rounded-xl text-sm">
                                     {payError}
@@ -1028,7 +1074,7 @@ const Checkout = () => {
                                 </button>
                                 <button
                                     onClick={handlePayNow}
-                                    disabled={isPayingOnline || isPayingCod || !user?.idToken}
+                                    disabled={isPayingOnline || isPayingCod || !user?.idToken || catalogNotice?.unavailable?.length > 0}
                                     className="flex-1 py-4 bg-primary text-black font-bold rounded-xl hover:brightness-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isPayingOnline ? (
@@ -1043,7 +1089,7 @@ const Checkout = () => {
                                 {isCodAvailable && (
                                     <button
                                         onClick={handleCodAdvancePayment}
-                                        disabled={isPayingOnline || isPayingCod || !user?.idToken}
+                                        disabled={isPayingOnline || isPayingCod || !user?.idToken || catalogNotice?.unavailable?.length > 0}
                                         className="flex-1 py-4 bg-gray-900 dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-80 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isPayingCod ? (

@@ -51,6 +51,16 @@ export const fetchProducts    = async () => (await fetchAllData()).product    ||
 export const fetchCollections = async () => (await fetchAllData()).collection || [];
 export const fetchCategories  = async () => (await fetchAllData()).category   || [];
 
+// Bypasses cachedData and re-fetches + overwrites it — used at checkout so
+// price/stock reflect what's in D1 right now, not whatever was cached the
+// first time the catalog loaded earlier in the session.
+export const refreshProducts = async () => {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('Failed to refresh catalog data');
+    cachedData = await res.json();
+    return cachedData.product || [];
+};
+
 // Active store/branch locations, sorted by Display_Order. Cached per session
 // so revisiting the homepage doesn't re-fetch.
 let cachedBranches = null;
