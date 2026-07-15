@@ -69,7 +69,14 @@ for the CORS fix below, but the owner chose to hold it too).
    `FAILED` `PAYMENT_SUCCESS_WEBHOOK` attempts in that window against D1
    orders still in `Pending Payment` to find every affected order, not just
    this one.
-7. Deploy with:
+7. **`getAdminOrders`'s `LEFT JOIN payments` now filters `is_deleted = 0`** —
+   without it, an order with more than one `payments` row (any retried
+   payment, now common since item 3 above) was returned once *per payment
+   row*, duplicating that order in the admin orders list and making sorting
+   look broken. Same root cause as item 3: the join's old comment assumed
+   "an order never has two payments rows," which stopped being true the
+   moment `upsertPayment` switched to soft-delete.
+8. Deploy with:
    ```bash
    cd Backend
    npx wrangler login    # sign in as legacytraces24@gmail.com
@@ -77,7 +84,7 @@ for the CORS fix below, but the owner chose to hold it too).
    npx wrangler deploy   # no --env flag
    ```
 
-**Frontend (`main` branch — 7 commits ahead of `origin/main`):**
+**Frontend (`main` branch — 8 commits ahead of `origin/main`):**
 - `faed06b`, `b27a6ce`, `e9958ec` — this `CLAUDE.md` file itself (topology,
   schema parity-check steps, full env-var reference)
 - `dfa36ed` — CSP fix whitelisting the non-prod Worker URL in
@@ -88,6 +95,10 @@ for the CORS fix below, but the owner chose to hold it too).
 - `0f89122` — `docs/PAYMENT_FLOW_RCA.md` + this pending-deployment tracking
 - `d84d172` — Checkout: warns the customer not to close the payment
   window/tab during the active payment or verification window
+- `639b002` — Checkout: skips a redundant payment modal if a retry is
+  already paid (pairs with backend item 3)
+- `9d209e5` — Admin dashboard: clickable summary/status filter cards,
+  compact bordered orders table
 - Deploy with: `git push origin main`, then `git checkout main && npm run
   build && npm run deploy`
 
