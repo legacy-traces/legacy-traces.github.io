@@ -980,6 +980,21 @@ const Checkout = () => {
                                 </div>
                             )}
 
+                            {/* Shown once payment is actually underway (modal open, or the
+                                brief verification poll right after it closes) — this is the
+                                one window where leaving early can leave an order unconfirmed
+                                even though the payment itself went through. */}
+                            {(isPayingOnline || isPayingCod) && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 p-3 rounded-xl text-sm flex items-start gap-2">
+                                    <span className="text-lg leading-none mt-0.5">🔒</span>
+                                    <p>Please don't close this tab or the payment window while we confirm your payment — it only takes a few seconds. Closing it too early can leave your order showing as unconfirmed even if the payment itself went through.</p>
+                                </div>
+                            )}
+
+                            <p className="text-xs text-gray-400 text-center -mt-1">
+                                Once you tap pay, please stay on this page until you see a confirmation.
+                            </p>
+
                             <div className="pt-2 flex flex-col sm:flex-row gap-3">
                                 <button
                                     type="button"
