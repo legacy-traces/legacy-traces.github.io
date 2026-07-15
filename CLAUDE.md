@@ -99,6 +99,9 @@ for the CORS fix below, but the owner chose to hold it too).
   already paid (pairs with backend item 3)
 - `9d209e5` — Admin dashboard: clickable summary/status filter cards,
   compact bordered orders table
+- `44cc4f0` — Admin dashboard: ServiceNow-style unified column search
+  (per-column lens-icon search feeding the same condition model as the
+  Advanced panel; replaces the old top search boxes + separate date range)
 - Deploy with: `git push origin main`, then `git checkout main && npm run
   build && npm run deploy`
 
