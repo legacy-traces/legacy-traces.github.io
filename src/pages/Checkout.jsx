@@ -939,6 +939,9 @@ const Checkout = () => {
                                                 {couponApplying ? '...' : 'Apply'}
                                             </button>
                                         </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                            Have a coupon code from one of our partner shops? Enter it above for an exclusive discount.
+                                        </p>
                                     </>
                                 )}
                                 <AnimatePresence mode="wait">
